@@ -471,6 +471,20 @@ h1 {
   background: rgba(255, 255, 255, 0.05);
 }
 
+.select-input,
+.select-input option,
+.select-input optgroup {
+  color: var(--text);
+  background-color: #141f33;
+}
+
+.select-input option:checked,
+.select-input option:hover,
+.select-input option:focus {
+  color: #08111e;
+  background: var(--gold-strong);
+}
+
 .text-input::placeholder {
   color: var(--muted-soft);
 }
