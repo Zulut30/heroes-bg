@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Конструктор стратегий</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="site-header">
+      <a class="brand-mark" href="./index.html">Battlegrounds Hub</a>
+      <nav class="site-nav" aria-label="Основная навигация">
+        <a class="nav-link" href="./index.html">Главная</a>
+        <a class="nav-link" href="./tier-list.html">Тир-лист</a>
+        <a class="nav-link" href="./library.html">Библиотека карт</a>
+        <a class="nav-link is-active" href="./strategy-builder.html">Конструктор</a>
+      </nav>
+    </header>
+
+    <main class="builder-layout">
+      <section class="builder-sidebar">
+        <div class="builder-sidebar-head">
+          <p class="eyebrow">Strategy Builder</p>
+          <h1 class="builder-title">Конструктор стратегий</h1>
+          <p class="hero-copy">
+            Перетаскивай карты на полотно, двигай их внутри композиции и скачивай итоговую стратегию
+            с прозрачным фоном.
+          </p>
+        </div>
+
+        <div class="builder-controls">
+          <label class="control-field">
+            <span class="control-label">Поиск по картам</span>
+            <input id="builder-search" class="text-input" type="search" placeholder="Например, пираты, мурлок, предсмертный хрип">
+          </label>
+
+          <div class="builder-filter-row">
+            <label class="control-field">
+              <span class="control-label">Тип существа</span>
+              <select id="builder-race" class="select-input">
+                <option value="ALL">Все типы</option>
+                <option value="NONE">Без типа</option>
+                <option value="BEAST">Звери</option>
+                <option value="DEMON">Демоны</option>
+                <option value="DRAGON">Драконы</option>
+                <option value="ELEMENTAL">Элементали</option>
+                <option value="MECHANICAL">Механизмы</option>
+                <option value="MURLOC">Мурлоки</option>
+                <option value="NAGA">Нага</option>
+                <option value="PIRATE">Пираты</option>
+                <option value="QUILBOAR">Свинобразы</option>
+                <option value="UNDEAD">Нежить</option>
+              </select>
+            </label>
+
+            <label class="control-field">
+              <span class="control-label">Таверна</span>
+              <select id="builder-level" class="select-input">
+                <option value="ALL">Все уровни</option>
+                <option value="1">Таверна 1</option>
+                <option value="2">Таверна 2</option>
+                <option value="3">Таверна 3</option>
+                <option value="4">Таверна 4</option>
+                <option value="5">Таверна 5</option>
+                <option value="6">Таверна 6</option>
+                <option value="7">Таверна 7</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="builder-toolbar">
+            <button id="builder-clear" class="secondary-button" type="button">Очистить полотно</button>
+            <button id="builder-export-png" class="download-button" type="button">Скачать PNG</button>
+            <button id="builder-export-webp" class="secondary-button" type="button">Скачать WebP</button>
+          </div>
+        </div>
+
+        <div id="builder-status" class="library-status">Загружаю карты...</div>
+        <div id="builder-library" class="builder-library" aria-live="polite"></div>
+      </section>
+
+      <section class="builder-canvas-panel">
+        <div class="builder-canvas-head">
+          <div>
+            <p class="eyebrow">Transparent Board</p>
+            <h2 class="panel-title">Полотно стратегии</h2>
+          </div>
+          <div id="builder-counter" class="filter-caption">0 карт на полотне</div>
+        </div>
+
+        <div id="strategy-board" class="strategy-board">
+          <div class="strategy-board-hint">
+            Перетащи сюда 5-6 карт из библиотеки, чтобы собрать стратегию
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+  <script src="./shared.js"></script>
+  <script src="./strategy-builder.js"></script>
+</body>
+</html>
