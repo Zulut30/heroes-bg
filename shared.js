@@ -12,6 +12,29 @@
     });
   }
 
+  async function loadImageFromSource(src) {
+    if (!src) {
+      throw new Error("Пустой путь к изображению.");
+    }
+
+    if (/^https?:\/\//i.test(src)) {
+      const response = await fetch(src, { mode: "cors", cache: "force-cache" });
+      if (!response.ok) {
+        throw new Error(`Не удалось загрузить изображение: ${src}`);
+      }
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      try {
+        return await loadImage(blobUrl);
+      } finally {
+        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      }
+    }
+
+    return loadImage(src);
+  }
+
   function canvasToBlob(canvas, type = "image/png", quality = 0.92) {
     return new Promise((resolve, reject) => {
       canvas.toBlob((blob) => {
@@ -60,6 +83,23 @@
     return lines.length ? lines : [""];
   }
 
+  function drawImageContain(ctx, image, x, y, width, height) {
+    const imageRatio = image.width / image.height;
+    const boxRatio = width / height;
+    let drawWidth = width;
+    let drawHeight = height;
+
+    if (imageRatio > boxRatio) {
+      drawHeight = width / imageRatio;
+    } else {
+      drawWidth = height * imageRatio;
+    }
+
+    const drawX = x + (width - drawWidth) / 2;
+    const drawY = y + (height - drawHeight) / 2;
+    ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+  }
+
   async function compressForWordPress(blob, fileName) {
     if (!window.imageCompression) {
       return blob;
@@ -102,8 +142,10 @@
     const columns = Math.min(options.columns || 8, 8);
     const gap = options.gap || 28;
     const cardWidth = options.cardWidth || 176;
-    const artRatio = options.artRatio || 1.38;
-    const cardHeight = options.cardHeight || Math.round(cardWidth * artRatio) + 94;
+    const artHeight = options.artHeight || Math.round(cardWidth * (options.artRatio || 1.38));
+    const textLines = options.textLines || 3;
+    const footerHeight = options.footerHeight || 28 + textLines * 22 + 18;
+    const cardHeight = options.cardHeight || artHeight + footerHeight + 24;
     const padding = options.padding || 46;
     const headerHeight = options.headerHeight || 180;
     const rows = Math.ceil(cards.length / columns);
@@ -132,50 +174,48 @@
     ctx.font = '500 22px "Segoe UI", sans-serif';
     ctx.fillText(subtitle, padding, 112);
 
-    await Promise.all(
-      cards.map(async (card, index) => {
-        const row = Math.floor(index / columns);
-        const column = index % columns;
-        const x = padding + column * (cardWidth + gap);
-        const y = headerHeight + row * (cardHeight + gap);
-        const artY = y + 14;
-        const artHeight = Math.round(cardWidth * artRatio);
-        const img = await loadImage(card.image || card.artUrl);
+    for (const [index, card] of cards.entries()) {
+      const row = Math.floor(index / columns);
+      const column = index % columns;
+      const x = padding + column * (cardWidth + gap);
+      const y = headerHeight + row * (cardHeight + gap);
+      const artY = y + 14;
+      const imageSource = card.exportImage || card.image || card.artUrl;
+      const img = await loadImageFromSource(imageSource);
 
-        ctx.save();
-        roundedRect(ctx, x, y, cardWidth, cardHeight, 22);
-        ctx.fillStyle = "rgba(13, 20, 35, 0.96)";
-        ctx.fill();
-        ctx.restore();
+      ctx.save();
+      roundedRect(ctx, x, y, cardWidth, cardHeight, 22);
+      ctx.fillStyle = "rgba(13, 20, 35, 0.96)";
+      ctx.fill();
+      ctx.restore();
 
-        ctx.save();
-        roundedRect(ctx, x + 10, artY, cardWidth - 20, artHeight, 18);
-        ctx.clip();
-        ctx.drawImage(img, x + 10, artY, cardWidth - 20, artHeight);
-        ctx.restore();
+      ctx.save();
+      roundedRect(ctx, x + 10, artY, cardWidth - 20, artHeight, 18);
+      ctx.clip();
+      drawImageContain(ctx, img, x + 10, artY, cardWidth - 20, artHeight);
+      ctx.restore();
 
-        ctx.fillStyle = "rgba(248, 241, 219, 0.96)";
-        ctx.font = '700 20px "Segoe UI", sans-serif';
-        const lines = wrapText(ctx, card.name, cardWidth - 22).slice(0, 3);
-        lines.forEach((line, lineIndex) => {
-          ctx.fillText(line, x + 12, artY + artHeight + 28 + lineIndex * 22);
-        });
+      ctx.fillStyle = "rgba(248, 241, 219, 0.96)";
+      ctx.font = '700 20px "Segoe UI", sans-serif';
+      const lines = wrapText(ctx, card.name, cardWidth - 22).slice(0, textLines);
+      lines.forEach((line, lineIndex) => {
+        ctx.fillText(line, x + 12, artY + artHeight + 28 + lineIndex * 22);
+      });
 
-        const metaBits = [];
-        if (card.meta) {
-          metaBits.push(card.meta);
-        }
-        if (card.averagePlace) {
-          metaBits.push(`Среднее ${card.averagePlace}`);
-        }
+      const metaBits = [];
+      if (card.meta) {
+        metaBits.push(card.meta);
+      }
+      if (card.averagePlace) {
+        metaBits.push(`Среднее ${card.averagePlace}`);
+      }
 
-        if (metaBits.length) {
-          ctx.fillStyle = "rgba(200, 210, 232, 0.88)";
-          ctx.font = '500 16px "Segoe UI", sans-serif';
-          ctx.fillText(metaBits.join(" • "), x + 12, y + cardHeight - 16);
-        }
-      })
-    );
+      if (metaBits.length) {
+        ctx.fillStyle = "rgba(200, 210, 232, 0.88)";
+        ctx.font = '500 16px "Segoe UI", sans-serif';
+        ctx.fillText(metaBits.join(" • "), x + 12, y + cardHeight - 16);
+      }
+    }
 
     const rawBlob = await canvasToBlob(canvas, "image/webp", 0.94);
     const resultBlob = await compressForWordPress(rawBlob, fileBaseName);
@@ -195,6 +235,7 @@
   window.Shared = {
     MAX_DOWNLOAD_SIZE_MB,
     loadImage,
+    loadImageFromSource,
     debounce,
     exportCardSheet
   };

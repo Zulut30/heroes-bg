@@ -46,15 +46,16 @@
       button.textContent = "Готовлю WebP...";
       await window.Shared.exportCardSheet(
         tier.heroes.map((hero) => ({
-          ...hero,
-          meta: `${tier.tier}-тир`
+          ...hero
         })),
         {
           title: `Тир-лист Героев • ${tier.tier}-тир`,
           subtitle: `${tier.heroes.length} героев • до 8 карточек в ряд`,
           fileBaseName,
           columns: 8,
-          artRatio: 1.38
+          artHeight: 252,
+          textLines: 3,
+          footerHeight: 88
         }
       );
       button.textContent = "Скачать WebP";

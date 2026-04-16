@@ -51,6 +51,12 @@
     return String(value || "").toLowerCase().trim();
   }
 
+  function toAsciiSlug(value) {
+    return normalizeText(value)
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "selection";
+  }
+
   function syncStateFromUrl() {
     const params = new URLSearchParams(window.location.search);
     state.search = params.get("q") || "";
@@ -249,12 +255,6 @@
       >
       <div class="card-copy">
         <h3 class="card-title">${card.name}</h3>
-        <div class="card-meta">${getCardMeta(card)}</div>
-        <div class="tag-row">
-          ${(card.races?.length ? card.races : ["NONE"])
-            .map((race) => `<span class="mini-tag">${raceNames[race] || race}</span>`)
-            .join("")}
-        </div>
       </div>
     `;
 
@@ -335,18 +335,19 @@
 
       const parts = [];
       if (state.races.size) {
-        parts.push([...state.races].map((race) => raceNames[race]).join("-"));
+        parts.push([...state.races].map((race) => race.toLowerCase()).join("-"));
       }
       if (state.levels.size) {
         parts.push(`tavern-${[...state.levels].join("-")}`);
       }
       if (state.search) {
-        parts.push(normalizeText(state.search).replace(/\s+/g, "-"));
+        parts.push(toAsciiSlug(state.search));
       }
 
       await window.Shared.exportCardSheet(
         state.filtered.map((card) => ({
           ...card,
+          exportImage: card.artUrl,
           image: card.artUrl,
           meta: `Таверна ${card.techLevel}`
         })),
@@ -355,7 +356,9 @@
           subtitle: `${state.filtered.length} карт • до 8 в ряд`,
           fileBaseName: parts.length ? `bg-${parts.join("-")}` : "bg-selection",
           columns: 8,
-          artRatio: 1.42
+          artHeight: 286,
+          textLines: 3,
+          footerHeight: 88
         }
       );
 

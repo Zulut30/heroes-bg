@@ -349,8 +349,8 @@ h1 {
 .hero-thumb {
   width: 100%;
   aspect-ratio: 0.75;
-  object-fit: cover;
-  object-position: center top;
+  object-fit: contain;
+  object-position: center;
   background: rgba(255, 255, 255, 0.04);
 }
 
@@ -470,7 +470,7 @@ h1 {
 .card-tile {
   position: relative;
   overflow: hidden;
-  padding: 10px;
+  padding: 10px 10px 12px;
   border-radius: 20px;
   cursor: pointer;
   background: linear-gradient(180deg, rgba(28, 40, 61, 0.96), rgba(10, 16, 27, 0.98));
@@ -483,7 +483,8 @@ h1 {
 .card-art {
   width: 100%;
   aspect-ratio: 0.715;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.04);
 }
@@ -496,26 +497,7 @@ h1 {
   margin: 0;
   font-size: 0.96rem;
   line-height: 1.2;
-}
-
-.card-meta {
-  margin-top: 6px;
-  font-size: 0.9rem;
-}
-
-.tag-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.mini-tag {
-  padding: 5px 8px;
-  border-radius: 999px;
-  background: rgba(121, 183, 255, 0.12);
-  color: var(--accent);
-  font-size: 0.78rem;
+  text-wrap: balance;
 }
 
 .lightbox[hidden] {
