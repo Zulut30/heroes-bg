@@ -50,15 +50,20 @@
         })),
         {
           fileBaseName,
-          columns: 6,
-          gap: 30,
-          cardWidth: 220,
-          artHeight: 340,
+          columns: 8,
+          gap: 12,
+          padding: 18,
+          cardWidth: 238,
+          artHeight: 356,
           showHeader: false,
           showText: false,
           showMeta: false,
           showCardBackground: false,
-          background: "transparent"
+          background: "transparent",
+          maxWidthOrHeight: 2600,
+          maxSizeMB: 2,
+          initialQuality: 0.96,
+          outputQuality: 0.98
         }
       );
       button.textContent = "Скачать WebP";

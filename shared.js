@@ -100,18 +100,18 @@
     ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
   }
 
-  async function compressForWordPress(blob, fileName) {
+  async function compressForWordPress(blob, fileName, options = {}) {
     if (!window.imageCompression) {
       return blob;
     }
 
     try {
       const compressed = await window.imageCompression(blob, {
-        maxSizeMB: MAX_DOWNLOAD_SIZE_MB,
-        maxWidthOrHeight: 2200,
+        maxSizeMB: options.maxSizeMB || MAX_DOWNLOAD_SIZE_MB,
+        maxWidthOrHeight: options.maxWidthOrHeight || 2600,
         useWebWorker: true,
         fileType: "image/webp",
-        initialQuality: 0.92,
+        initialQuality: options.initialQuality || 0.94,
         preserveExif: false
       });
 
@@ -231,8 +231,12 @@
       }
     }
 
-    const rawBlob = await canvasToBlob(canvas, "image/webp", 0.94);
-    const resultBlob = await compressForWordPress(rawBlob, fileBaseName);
+    const rawBlob = await canvasToBlob(canvas, "image/webp", options.outputQuality || 0.96);
+    const resultBlob = await compressForWordPress(rawBlob, fileBaseName, {
+      maxSizeMB: options.maxSizeMB,
+      maxWidthOrHeight: options.maxWidthOrHeight,
+      initialQuality: options.initialQuality
+    });
     const blobUrl = URL.createObjectURL(resultBlob);
     const link = document.createElement("a");
 
