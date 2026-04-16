@@ -120,6 +120,134 @@ h1 {
   margin-top: 28px;
 }
 
+.library-shell {
+  margin-top: 30px;
+  padding: 24px;
+  border-radius: 26px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+}
+
+.library-intro h2 {
+  margin: 0;
+  font-family: "TierDisplay", sans-serif;
+  font-size: clamp(1.9rem, 3vw, 3rem);
+  line-height: 1;
+}
+
+.library-status {
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: 0.98rem;
+}
+
+.race-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.race-filter {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.race-filter:hover,
+.race-filter.is-active {
+  transform: translateY(-1px);
+  border-color: rgba(244, 206, 100, 0.5);
+  background: rgba(244, 206, 100, 0.12);
+}
+
+.bgs-library {
+  display: grid;
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.tavern-group {
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.tavern-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.tavern-group-title {
+  margin: 0;
+  font-size: 1.22rem;
+}
+
+.tavern-group-count {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 14px;
+}
+
+.library-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(3, 7, 14, 0.95));
+}
+
+.library-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1.2;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.library-card-body {
+  padding: 12px 12px 14px;
+}
+
+.library-card-name {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.15;
+}
+
+.library-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.library-card-text {
+  margin: 10px 0 0;
+  color: #d8deeb;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
 .tier-section {
   padding: 22px;
   border-radius: 26px;

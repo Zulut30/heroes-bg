@@ -155,8 +155,29 @@ const tierColors = {
 const tiersContainer = document.querySelector("#tiers");
 const tierTemplate = document.querySelector("#tier-template");
 const statsContainer = document.querySelector("#hero-stats");
+const bgsLibraryContainer = document.querySelector("#bgs-library");
+const bgsLibraryStatus = document.querySelector("#bgs-library-status");
+const bgsRaceFilters = document.querySelector("#bgs-race-filters");
 const MAX_DOWNLOAD_SIZE_MB = 2;
 const MAX_DOWNLOAD_SIZE_BYTES = MAX_DOWNLOAD_SIZE_MB * 1024 * 1024;
+const raceLabels = {
+  OVERVIEW: "Все карты",
+  ALL: "Все типы",
+  NONE: "Без типа",
+  BEAST: "Звери",
+  DEMON: "Демоны",
+  DRAGON: "Драконы",
+  ELEMENTAL: "Элементали",
+  MECHANICAL: "Механизмы",
+  MURLOC: "Мурлоки",
+  NAGA: "Наги",
+  PIRATE: "Пираты",
+  QUILBOAR: "Свинобразы",
+  UNDEAD: "Нежить",
+};
+
+let bgsLibraryData = null;
+let activeRaceFilter = "OVERVIEW";
 
 function buildStats() {
   const totalHeroes = tierData.reduce((sum, tier) => sum + tier.heroes.length, 0);
@@ -267,6 +288,134 @@ function loadImage(src) {
     image.onerror = () => resolve(null);
     image.src = src;
   });
+}
+
+function getCardRaces(card) {
+  return card.races?.length ? card.races : ["NONE"];
+}
+
+function getRaceOptions(cards) {
+  const races = new Set(["OVERVIEW"]);
+  cards.forEach((card) => {
+    getCardRaces(card).forEach((race) => races.add(race));
+  });
+
+  const ordered = ["OVERVIEW", "ALL", "BEAST", "DEMON", "DRAGON", "ELEMENTAL", "MECHANICAL", "MURLOC", "NAGA", "PIRATE", "QUILBOAR", "UNDEAD", "NONE"];
+  return ordered.filter((race) => races.has(race));
+}
+
+function renderRaceFilters(cards) {
+  const races = getRaceOptions(cards);
+  bgsRaceFilters.innerHTML = "";
+
+  races.forEach((race) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `race-filter${race === activeRaceFilter ? " is-active" : ""}`;
+    button.textContent = raceLabels[race] || race;
+    button.addEventListener("click", () => {
+      activeRaceFilter = race;
+      renderRaceFilters(cards);
+      renderBgsLibrary(cards);
+    });
+    bgsRaceFilters.appendChild(button);
+  });
+}
+
+function createLibraryCard(card) {
+  const article = document.createElement("article");
+  article.className = "library-card";
+
+  const image = document.createElement("img");
+  image.src = card.artUrl;
+  image.alt = card.name;
+  image.loading = "lazy";
+  article.appendChild(image);
+
+  const body = document.createElement("div");
+  body.className = "library-card-body";
+
+  const title = document.createElement("h4");
+  title.className = "library-card-name";
+  title.textContent = card.name;
+  body.appendChild(title);
+
+  const meta = document.createElement("div");
+  meta.className = "library-card-meta";
+  meta.textContent = `${card.attack}/${card.health} • ${getCardRaces(card).map((race) => raceLabels[race] || race).join(", ")}`;
+  body.appendChild(meta);
+
+  if (card.text) {
+    const text = document.createElement("p");
+    text.className = "library-card-text";
+    text.textContent = card.text;
+    body.appendChild(text);
+  }
+
+  article.appendChild(body);
+  return article;
+}
+
+function renderBgsLibrary(cards) {
+  const filteredCards = activeRaceFilter === "OVERVIEW"
+    ? cards
+    : cards.filter((card) => getCardRaces(card).includes(activeRaceFilter));
+
+  bgsLibraryContainer.innerHTML = "";
+
+  if (filteredCards.length === 0) {
+    bgsLibraryStatus.textContent = "Для этого типа существ карт не найдено.";
+    return;
+  }
+
+  bgsLibraryStatus.textContent = `${filteredCards.length} карт • ${raceLabels[activeRaceFilter] || activeRaceFilter}`;
+
+  for (let tavernLevel = 1; tavernLevel <= 7; tavernLevel += 1) {
+    const levelCards = filteredCards.filter((card) => card.techLevel === tavernLevel);
+    if (levelCards.length === 0) {
+      continue;
+    }
+
+    const group = document.createElement("section");
+    group.className = "tavern-group";
+
+    const header = document.createElement("div");
+    header.className = "tavern-group-header";
+
+    const title = document.createElement("h3");
+    title.className = "tavern-group-title";
+    title.textContent = `Уровень таверны ${tavernLevel}`;
+    header.appendChild(title);
+
+    const count = document.createElement("div");
+    count.className = "tavern-group-count";
+    count.textContent = `${levelCards.length} карт`;
+    header.appendChild(count);
+
+    const grid = document.createElement("div");
+    grid.className = "library-grid";
+    levelCards.forEach((card) => grid.appendChild(createLibraryCard(card)));
+
+    group.appendChild(header);
+    group.appendChild(grid);
+    bgsLibraryContainer.appendChild(group);
+  }
+}
+
+async function loadBgsLibrary() {
+  try {
+    const response = await fetch("./bgs-library.json", { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    bgsLibraryData = await response.json();
+    renderRaceFilters(bgsLibraryData.cards);
+    renderBgsLibrary(bgsLibraryData.cards);
+  } catch (error) {
+    console.error(error);
+    bgsLibraryStatus.textContent = "Не удалось загрузить библиотеку карт HearthstoneJSON.";
+  }
 }
 
 function canvasToBlob(canvas, type, quality) {
@@ -480,3 +629,4 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight, center = true) {
 }
 
 renderTiers();
+loadBgsLibrary();

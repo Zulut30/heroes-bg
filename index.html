@@ -20,6 +20,21 @@
     </header>
 
     <main id="tiers" class="tiers" aria-live="polite"></main>
+
+    <section class="library-shell" aria-labelledby="bgs-library-title">
+      <div class="library-intro">
+        <p class="eyebrow">HearthstoneJSON</p>
+        <h2 id="bgs-library-title">Библиотека карт Полей сражений</h2>
+        <p class="hero-copy">
+          Миньоны загружаются на основе HearthstoneJSON и артов HearthstoneJSON Art.
+          Ниже можно переключать тип существа, а внутри каждого раздела карты сгруппированы по уровню таверны.
+        </p>
+      </div>
+
+      <div id="bgs-library-status" class="library-status">Загружаю библиотеку карт...</div>
+      <div id="bgs-race-filters" class="race-filters" aria-label="Фильтр по типу существа"></div>
+      <div id="bgs-library" class="bgs-library"></div>
+    </section>
   </div>
 
   <template id="tier-template">
