@@ -43,6 +43,13 @@
     lightboxIndex: -1
   };
 
+  function getCardArtUrl(card, size = "256x") {
+    if (!card?.id) {
+      return card?.artUrl || "";
+    }
+    return `/api/card-art?id=${encodeURIComponent(card.id)}&locale=ruRU&size=${encodeURIComponent(size)}`;
+  }
+
   function setStatus(message) {
     statusEl.textContent = message;
   }
@@ -215,7 +222,7 @@
 
     lightbox.hidden = false;
     document.body.style.overflow = "hidden";
-    lightboxImage.src = card.artUrl;
+    lightboxImage.src = getCardArtUrl(card, "512x");
     lightboxImage.alt = card.name;
     lightboxTitle.textContent = card.name;
     lightboxMeta.textContent = getCardMeta(card);
@@ -247,7 +254,7 @@
     tile.innerHTML = `
       <img
         class="card-art"
-        src="${card.artUrl}"
+        src="${getCardArtUrl(card, "256x")}"
         alt="${card.name}"
         loading="lazy"
         decoding="async"
@@ -347,8 +354,8 @@
       await window.Shared.exportCardSheet(
         state.filtered.map((card) => ({
           ...card,
-          exportImage: card.artUrl,
-          image: card.artUrl,
+          exportImage: getCardArtUrl(card, "512x"),
+          image: getCardArtUrl(card, "512x"),
           meta: `Таверна ${card.techLevel}`
         })),
         {
