@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "TierDisplay";
+  src: url("./font.otf") format("opentype");
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   color-scheme: dark;
   --bg: #08111f;
@@ -24,7 +32,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: "Manrope", sans-serif;
+  font-family: "TierDisplay", sans-serif;
   color: var(--text);
   background:
     radial-gradient(circle at top, rgba(244, 206, 100, 0.14), transparent 34%),
@@ -64,8 +72,8 @@ body::before {
 
 .eyebrow {
   margin: 0 0 12px;
-  font-size: 0.82rem;
-  letter-spacing: 0.22em;
+  font-size: 0.92rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #f3d98b;
 }
@@ -73,7 +81,7 @@ body::before {
 h1,
 .tier-title,
 .tier-badge {
-  font-family: "Cinzel", serif;
+  font-family: "TierDisplay", sans-serif;
 }
 
 h1 {
@@ -85,8 +93,8 @@ h1 {
 .hero-copy {
   max-width: 760px;
   margin: 18px 0 0;
-  font-size: 1.02rem;
-  line-height: 1.65;
+  font-size: 1.06rem;
+  line-height: 1.6;
   color: var(--muted);
 }
 
@@ -102,7 +110,7 @@ h1 {
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.05);
-  font-weight: 700;
+  font-weight: 600;
   color: #ecf2ff;
 }
 
@@ -149,7 +157,7 @@ h1 {
 
 .tier-title {
   margin: 0;
-  font-size: 1.45rem;
+  font-size: 1.52rem;
 }
 
 .tier-summary {
@@ -162,7 +170,7 @@ h1 {
   border-radius: 999px;
   padding: 14px 18px;
   font: inherit;
-  font-weight: 800;
+  font-weight: 700;
   color: #07111f;
   background: linear-gradient(135deg, #fff3c1, #f4ce64);
   cursor: pointer;
@@ -246,9 +254,10 @@ h1 {
 
 .hero-name {
   bottom: 12px;
-  font-size: 0.92rem;
-  font-weight: 800;
-  line-height: 1.25;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.18;
+  text-wrap: balance;
 }
 
 .hero-rank {
@@ -258,8 +267,8 @@ h1 {
   width: fit-content;
   padding: 6px 8px;
   border-radius: 999px;
-  font-size: 0.76rem;
-  font-weight: 800;
+  font-size: 0.72rem;
+  font-weight: 700;
   color: #fff6d6;
   background: rgba(3, 8, 15, 0.68);
   border: 1px solid rgba(255, 255, 255, 0.12);

@@ -1,14 +1,14 @@
 const tierData = [
   {
     tier: "S",
-    title: "S Tier",
+    title: "S Тир",
     heroes: [
       { name: "Король воргенов Генн", popularity: "89.3%", averagePlace: "3.72", image: "./heroes_bg/Genn, Worgen King.png" },
     ],
   },
   {
     tier: "A",
-    title: "A Tier",
+    title: "A Тир",
     heroes: [
       { name: "Миллифисент Манашторм", popularity: "33.2%", averagePlace: "3.83", image: "./heroes_bg/Millificent Manastorm.png" },
       { name: "Ченваала", popularity: "46.9%", averagePlace: "3.88", image: "./heroes_bg/Chenvaala.png" },
@@ -40,7 +40,7 @@ const tierData = [
   },
   {
     tier: "B",
-    title: "B Tier",
+    title: "B Тир",
     heroes: [
       { name: "Капитан Юдора", popularity: "35.7%", averagePlace: "4.17", image: "./heroes_bg/Captain Eudora.png" },
       { name: "Грибомант Флургл", popularity: "29.3%", averagePlace: "4.17", image: "./heroes_bg/Fungalmancer Flurgl.png" },
@@ -79,7 +79,7 @@ const tierData = [
   },
   {
     tier: "C",
-    title: "C Tier",
+    title: "C Тир",
     heroes: [
       { name: "Король воров Вихлепых", popularity: "23.4%", averagePlace: "4.31", image: "./heroes_bg/Heistbaron Togwaggle.png" },
       { name: "Сир Денатрий", popularity: "75.9%", averagePlace: "4.32", image: "./heroes_bg/Sire Denathrius.png" },
@@ -114,7 +114,7 @@ const tierData = [
   },
   {
     tier: "D",
-    title: "D Tier",
+    title: "D Тир",
     heroes: [
       { name: "Иллидан", popularity: "27.6%", averagePlace: "4.45", image: "./heroes_bg/Illidan Stormrage.png" },
       { name: "Ноздорму", popularity: "23.6%", averagePlace: "4.45", image: "./heroes_bg/Nozdormu.png" },
@@ -328,19 +328,19 @@ async function exportTierImage(tierInfo) {
   ctx.fill();
 
   ctx.fillStyle = "#07111e";
-  ctx.font = "700 34px Cinzel";
+  ctx.font = "700 34px TierDisplay";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(tierInfo.tier, padding + 66, padding + 38);
 
   ctx.textAlign = "left";
   ctx.fillStyle = "#f6f1df";
-  ctx.font = "700 40px Cinzel";
-  ctx.fillText(`${tierInfo.title} Heroes`, padding + 160, padding + 42);
+  ctx.font = "700 38px TierDisplay";
+  ctx.fillText("Тир-лист Героев", padding + 160, padding + 42);
 
   ctx.fillStyle = "#b8c1d1";
-  ctx.font = "600 18px Manrope";
-  ctx.fillText(`${tierInfo.heroes.length} героев • средний ранг ${calculateTierAverage(tierInfo.heroes)}`, padding + 160, padding + 78);
+  ctx.font = "600 18px TierDisplay";
+  ctx.fillText(`${tierInfo.title} • ${tierInfo.heroes.length} героев • средний ранг ${calculateTierAverage(tierInfo.heroes)}`, padding + 160, padding + 78);
 
   tierInfo.heroes.forEach((hero, index) => {
     const row = Math.floor(index / columns);
@@ -371,10 +371,10 @@ async function exportTierImage(tierInfo) {
       ctx.fillStyle = placeholderGradient;
       ctx.fillRect(x, y, cardWidth, imageHeight);
       ctx.fillStyle = "#fff0b5";
-      ctx.font = "800 20px Manrope";
+      ctx.font = "800 20px TierDisplay";
       ctx.textAlign = "center";
       wrapText(ctx, hero.name, x + cardWidth / 2, y + imageHeight / 2 - 16, cardWidth - 22, 24);
-      ctx.font = "700 15px Manrope";
+      ctx.font = "700 15px TierDisplay";
       ctx.fillStyle = "rgba(255, 246, 214, 0.8)";
       ctx.fillText("PNG не найден", x + cardWidth / 2, y + imageHeight - 24);
     }
@@ -390,12 +390,12 @@ async function exportTierImage(tierInfo) {
     roundedRect(ctx, x + 10, y + 10, 108, 28, 14);
     ctx.fill();
     ctx.fillStyle = "#fff6d6";
-    ctx.font = "800 13px Manrope";
+    ctx.font = "800 13px TierDisplay";
     ctx.textAlign = "left";
     ctx.fillText(`Среднее ${hero.averagePlace}`, x + 19, y + 28);
 
     ctx.fillStyle = "#f8f4ea";
-    ctx.font = "800 16px Manrope";
+    ctx.font = "800 16px TierDisplay";
     wrapText(ctx, hero.name, x + 14, y + cardHeight - 36, cardWidth - 28, 19, false);
   });
 
