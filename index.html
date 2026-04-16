@@ -3,57 +3,48 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Heroes Battlegrounds Tier List</title>
+  <title>Hearthstone Battlegrounds Hub</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
   <div class="page-shell">
-    <header class="hero">
-      <p class="eyebrow">Hearthstone Battlegrounds</p>
-      <h1>Тир-лист героев</h1>
-      <p class="hero-copy">
-        Все герои собраны по тиру в виде сетки. Для каждого тира можно отдельно скачать WebP:
-        в экспорт попадают все герои из секции, не больше 8 карточек в ряд, а итоговый файл
-        автоматически сжимается для загрузки в WordPress до размера около 2 MB.
-      </p>
-      <div class="hero-stats" id="hero-stats"></div>
+    <header class="site-header">
+      <a class="brand-mark" href="./index.html">Battlegrounds Hub</a>
+      <nav class="site-nav" aria-label="Основная навигация">
+        <a class="nav-link is-active" href="./index.html">Главная</a>
+        <a class="nav-link" href="./tier-list.html">Тир-лист</a>
+        <a class="nav-link" href="./library.html">Библиотека карт</a>
+      </nav>
     </header>
 
-    <main id="tiers" class="tiers" aria-live="polite"></main>
-
-    <section class="library-shell" aria-labelledby="bgs-library-title">
-      <div class="library-intro">
-        <p class="eyebrow">HearthstoneJSON</p>
-        <h2 id="bgs-library-title">Библиотека карт Полей сражений</h2>
+    <main>
+      <section class="poster-hero">
+        <p class="eyebrow">Hearthstone Battlegrounds Toolkit</p>
+        <h1>Один хаб для героев, миньонов и готовых экспортов</h1>
         <p class="hero-copy">
-          Миньоны загружаются на основе HearthstoneJSON и артов HearthstoneJSON Art.
-          Ниже можно переключать тип существа, а внутри каждого раздела карты сгруппированы по уровню таверны.
+          Сайт теперь разделён на отдельные страницы: быстрый тир-лист героев и отдельная
+          библиотека карт Полей сражений с гибкими фильтрами, lightbox и экспортом текущей выборки.
         </p>
-      </div>
-
-      <div id="bgs-library-status" class="library-status">Загружаю библиотеку карт...</div>
-      <div id="bgs-race-filters" class="race-filters" aria-label="Фильтр по типу существа"></div>
-      <div id="bgs-library" class="bgs-library"></div>
-    </section>
-  </div>
-
-  <template id="tier-template">
-    <section class="tier-section">
-      <div class="tier-header">
-        <div class="tier-meta">
-          <span class="tier-badge"></span>
-          <div>
-            <h2 class="tier-title"></h2>
-            <p class="tier-summary"></p>
-          </div>
+        <div class="hero-actions">
+          <a class="primary-link" href="./tier-list.html">Открыть тир-лист</a>
+          <a class="secondary-link" href="./library.html">Открыть библиотеку карт</a>
         </div>
-        <button class="download-button" type="button">Скачать WebP</button>
-      </div>
-      <div class="hero-grid"></div>
-    </section>
-  </template>
+      </section>
 
-  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
-  <script src="./app.js"></script>
+      <section class="feature-grid">
+        <a class="feature-panel" href="./tier-list.html">
+          <span class="panel-kicker">Страница 1</span>
+          <h2>Тир-лист героев</h2>
+          <p>Сетки по тиру, отдельный экспорт каждого тира и быстрый обзор текущего распределения героев.</p>
+        </a>
+
+        <a class="feature-panel" href="./library.html">
+          <span class="panel-kicker">Страница 2</span>
+          <h2>Библиотека Battlegrounds</h2>
+          <p>Поиск, фильтры по типу существа и уровню таверны, просмотр в lightbox и экспорт любой текущей выборки.</p>
+        </a>
+      </section>
+    </main>
+  </div>
 </body>
 </html>

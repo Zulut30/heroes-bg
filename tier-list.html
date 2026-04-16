@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Тир-лист героев</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="site-header">
+      <a class="brand-mark" href="./index.html">Battlegrounds Hub</a>
+      <nav class="site-nav" aria-label="Основная навигация">
+        <a class="nav-link" href="./index.html">Главная</a>
+        <a class="nav-link is-active" href="./tier-list.html">Тир-лист</a>
+        <a class="nav-link" href="./library.html">Библиотека карт</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="page-hero">
+        <p class="eyebrow">Heroes Overview</p>
+        <h1>Тир-лист героев</h1>
+        <p class="hero-copy">
+          Герои собраны по тиру в стабильные сетки. Для каждого тира можно отдельно скачать
+          сжатый WebP, готовый для WordPress.
+        </p>
+        <div id="hero-stats" class="hero-stats"></div>
+      </section>
+
+      <section id="tiers" class="tiers" aria-live="polite"></section>
+    </main>
+  </div>
+
+  <template id="tier-template">
+    <section class="tier-section">
+      <div class="tier-header">
+        <div class="tier-meta">
+          <span class="tier-badge"></span>
+          <div>
+            <h2 class="tier-title"></h2>
+            <p class="tier-summary"></p>
+          </div>
+        </div>
+        <button class="download-button" type="button">Скачать WebP</button>
+      </div>
+      <div class="hero-grid"></div>
+    </section>
+  </template>
+
+  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+  <script src="./shared.js"></script>
+  <script src="./tier-data.js"></script>
+  <script src="./tier-list.js"></script>
+</body>
+</html>

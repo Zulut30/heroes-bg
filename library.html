@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Библиотека карт Полей сражений</title>
+  <link rel="preconnect" href="https://art.hearthstonejson.com" crossorigin>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="site-header">
+      <a class="brand-mark" href="./index.html">Battlegrounds Hub</a>
+      <nav class="site-nav" aria-label="Основная навигация">
+        <a class="nav-link" href="./index.html">Главная</a>
+        <a class="nav-link" href="./tier-list.html">Тир-лист</a>
+        <a class="nav-link is-active" href="./library.html">Библиотека карт</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="page-hero">
+        <p class="eyebrow">HearthstoneJSON Library</p>
+        <h1>Библиотека карт Полей сражений</h1>
+        <p class="hero-copy">
+          Гибкая страница для работы с Battlegrounds-картами: поиск, многокритериальные фильтры,
+          группировка по уровням таверны, lightbox и экспорт текущей выборки в изображение по 8 карт в ряд.
+        </p>
+      </section>
+
+      <section class="library-controls-panel">
+        <div class="controls-topline">
+          <div>
+            <p class="eyebrow">Фильтры</p>
+            <h2 class="panel-title">Текущая выборка</h2>
+          </div>
+          <div class="controls-actions">
+            <button id="reset-filters" class="secondary-button" type="button">Сбросить</button>
+            <button id="export-selection" class="download-button" type="button">Скачать выборку</button>
+          </div>
+        </div>
+
+        <div class="controls-grid">
+          <label class="control-field">
+            <span class="control-label">Поиск</span>
+            <input id="card-search" class="text-input" type="search" placeholder="Например, пираты, мурлок, предсмертный хрип">
+          </label>
+
+          <label class="control-field">
+            <span class="control-label">Сортировка</span>
+            <select id="sort-select" class="select-input">
+              <option value="tech-name">Сначала по таверне</option>
+              <option value="name-asc">По имени</option>
+              <option value="attack-desc">По атаке</option>
+              <option value="health-desc">По здоровью</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="filter-block">
+          <div class="filter-heading-row">
+            <h3 class="filter-heading">Тип существа</h3>
+            <span id="active-races-label" class="filter-caption">Все карты</span>
+          </div>
+          <div id="race-filters" class="chip-row" aria-label="Фильтр по типу существа"></div>
+        </div>
+
+        <div class="filter-block">
+          <div class="filter-heading-row">
+            <h3 class="filter-heading">Уровень таверны</h3>
+            <span id="active-levels-label" class="filter-caption">Все уровни</span>
+          </div>
+          <div id="level-filters" class="chip-row" aria-label="Фильтр по уровню таверны"></div>
+        </div>
+      </section>
+
+      <section class="library-results">
+        <div class="results-bar">
+          <div id="library-status" class="library-status">Загружаю библиотеку карт...</div>
+        </div>
+        <div id="library-results" class="library-groups" aria-live="polite"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="lightbox" class="lightbox" hidden>
+    <div class="lightbox-backdrop" data-close-lightbox="true"></div>
+    <div class="lightbox-dialog" role="dialog" aria-modal="true" aria-labelledby="lightbox-title">
+      <button class="lightbox-close" type="button" data-close-lightbox="true" aria-label="Закрыть">×</button>
+      <button class="lightbox-nav lightbox-prev" id="lightbox-prev" type="button" aria-label="Предыдущая карта">‹</button>
+      <div class="lightbox-body">
+        <img id="lightbox-image" class="lightbox-image" alt="">
+        <div class="lightbox-copy">
+          <p id="lightbox-kicker" class="eyebrow">Battlegrounds Card</p>
+          <h2 id="lightbox-title"></h2>
+          <p id="lightbox-meta" class="lightbox-meta"></p>
+          <p id="lightbox-text" class="lightbox-text"></p>
+        </div>
+      </div>
+      <button class="lightbox-nav lightbox-next" id="lightbox-next" type="button" aria-label="Следующая карта">›</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+  <script src="./shared.js"></script>
+  <script src="./library.js"></script>
+</body>
+</html>
