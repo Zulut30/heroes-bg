@@ -378,14 +378,19 @@
         {
           fileBaseName: parts.length ? `bg-${parts.join("-")}` : "bg-selection",
           columns: 6,
-          gap: 18,
-          cardWidth: 238,
-          artHeight: 332,
+          gap: 12,
+          padding: 6,
+          cardWidth: 258,
+          artHeight: 360,
           showHeader: false,
           showText: false,
           showMeta: false,
           showCardBackground: false,
-          background: "transparent"
+          background: "transparent",
+          maxWidthOrHeight: 3400,
+          maxSizeMB: 2,
+          initialQuality: 0.97,
+          outputQuality: 0.99
         }
       );
 
