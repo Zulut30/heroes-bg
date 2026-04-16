@@ -136,7 +136,6 @@ h3,
 .library-controls-panel,
 .tier-section,
 .feature-panel,
-.library-group,
 .card-tile,
 .lightbox-dialog {
   border: 1px solid var(--panel-border);
@@ -308,7 +307,6 @@ h1 {
 }
 
 .tier-section,
-.library-group,
 .library-controls-panel {
   padding: 22px;
   border-radius: var(--radius-lg);
@@ -383,6 +381,11 @@ h1 {
 
 .library-controls-panel {
   margin-top: 24px;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top left, rgba(219, 192, 122, 0.12), transparent 22%),
+    linear-gradient(180deg, rgba(10, 18, 33, 0.95), rgba(7, 16, 31, 0.9));
 }
 
 .controls-topline {
@@ -435,11 +438,28 @@ h1 {
 }
 
 .chip {
-  padding: 10px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
   border: 1px solid var(--panel-border);
   background: rgba(255, 255, 255, 0.04);
   color: var(--muted);
   cursor: pointer;
+}
+
+.chip-icon {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  background-image: var(--chip-icon);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+.chip-label {
+  white-space: nowrap;
 }
 
 .chip.is-active {
@@ -452,28 +472,19 @@ h1 {
   margin-bottom: 16px;
 }
 
-.group-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 18px;
-}
-
 .library-card-grid {
   display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));
-  gap: 14px;
+  gap: 12px;
 }
 
 .card-tile {
-  position: relative;
-  overflow: hidden;
-  padding: 10px 10px 12px;
-  border-radius: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   cursor: pointer;
-  background: linear-gradient(180deg, rgba(28, 40, 61, 0.96), rgba(10, 16, 27, 0.98));
 }
 
 .card-tile:hover {
@@ -485,19 +496,16 @@ h1 {
   aspect-ratio: 0.715;
   object-fit: contain;
   object-position: center;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  background: transparent;
 }
 
 .card-copy {
-  padding-top: 10px;
+  display: none;
 }
 
-.card-title {
-  margin: 0;
-  font-size: 0.96rem;
-  line-height: 1.2;
-  text-wrap: balance;
+.library-card-grid-flat {
+  margin-top: 8px;
 }
 
 .lightbox[hidden] {

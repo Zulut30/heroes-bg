@@ -136,6 +136,9 @@
       throw new Error("Нет карт для экспорта.");
     }
 
+    const showHeader = options.showHeader !== false;
+    const showCardBackground = options.showCardBackground !== false;
+    const background = options.background || "#07101f";
     const title = options.title || "Тир-лист Героев";
     const subtitle = options.subtitle || `${cards.length} карточек`;
     const fileBaseName = options.fileBaseName || "battlegrounds-export";
@@ -150,7 +153,7 @@
     const bodyHeight = showText || showMeta ? footerHeight : 0;
     const cardHeight = options.cardHeight || artHeight + bodyHeight + 24;
     const padding = options.padding || 46;
-    const headerHeight = options.headerHeight || 180;
+    const headerHeight = showHeader ? (options.headerHeight || 180) : 24;
     const rows = Math.ceil(cards.length / columns);
     const canvas = document.createElement("canvas");
 
@@ -159,23 +162,25 @@
 
     const ctx = canvas.getContext("2d");
 
-    ctx.fillStyle = "#07101f";
+    ctx.fillStyle = background;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    gradient.addColorStop(0, "rgba(219, 192, 122, 0.24)");
-    gradient.addColorStop(0.45, "rgba(19, 32, 57, 0.14)");
-    gradient.addColorStop(1, "rgba(121, 183, 255, 0.18)");
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (showHeader) {
+      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      gradient.addColorStop(0, "rgba(219, 192, 122, 0.24)");
+      gradient.addColorStop(0.45, "rgba(19, 32, 57, 0.14)");
+      gradient.addColorStop(1, "rgba(121, 183, 255, 0.18)");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = "rgba(248, 241, 219, 0.92)";
-    ctx.font = '700 42px "BgDisplay", Georgia, serif';
-    ctx.fillText(title, padding, 74);
+      ctx.fillStyle = "rgba(248, 241, 219, 0.92)";
+      ctx.font = '700 42px "BgDisplay", Georgia, serif';
+      ctx.fillText(title, padding, 74);
 
-    ctx.fillStyle = "rgba(200, 210, 232, 0.9)";
-    ctx.font = '500 22px "Segoe UI", sans-serif';
-    ctx.fillText(subtitle, padding, 112);
+      ctx.fillStyle = "rgba(200, 210, 232, 0.9)";
+      ctx.font = '500 22px "Segoe UI", sans-serif';
+      ctx.fillText(subtitle, padding, 112);
+    }
 
     for (const [index, card] of cards.entries()) {
       const row = Math.floor(index / columns);
@@ -186,16 +191,18 @@
       const imageSource = card.exportImage || card.image || card.artUrl;
       const img = await loadImageFromSource(imageSource);
 
-      ctx.save();
-      roundedRect(ctx, x, y, cardWidth, cardHeight, 22);
-      ctx.fillStyle = "rgba(13, 20, 35, 0.96)";
-      ctx.fill();
-      ctx.restore();
+      if (showCardBackground) {
+        ctx.save();
+        roundedRect(ctx, x, y, cardWidth, cardHeight, 22);
+        ctx.fillStyle = "rgba(13, 20, 35, 0.96)";
+        ctx.fill();
+        ctx.restore();
+      }
 
       ctx.save();
-      roundedRect(ctx, x + 10, artY, cardWidth - 20, artHeight, 18);
+      roundedRect(ctx, x, y, cardWidth, artHeight, 18);
       ctx.clip();
-      drawImageContain(ctx, img, x + 10, artY, cardWidth - 20, artHeight);
+      drawImageContain(ctx, img, x, y, cardWidth, artHeight);
       ctx.restore();
 
       if (showText) {
@@ -203,7 +210,7 @@
         ctx.font = '700 20px "Segoe UI", sans-serif';
         const lines = wrapText(ctx, card.name, cardWidth - 22).slice(0, textLines);
         lines.forEach((line, lineIndex) => {
-          ctx.fillText(line, x + 12, artY + artHeight + 28 + lineIndex * 22);
+          ctx.fillText(line, x + 12, y + artHeight + 28 + lineIndex * 22);
         });
       }
 

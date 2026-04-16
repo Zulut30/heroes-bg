@@ -33,6 +33,21 @@
     UNDEAD: "Нежить"
   };
 
+  const raceDecor = {
+    ALL: "./assset/общее.webp",
+    NONE: "./assset/общее.webp",
+    BEAST: "./assset/зверь.webp",
+    DEMON: "./assset/демоны.webp",
+    DRAGON: "./assset/драконы.webp",
+    ELEMENTAL: "./assset/элементали.webp",
+    MECHANICAL: "./assset/механизмы.webp",
+    MURLOC: "./assset/мурлоки.webp",
+    NAGA: "./assset/наги.webp",
+    PIRATE: "./assset/пираты.webp",
+    QUILBOAR: "./assset/свинобразы.webp",
+    UNDEAD: "./assset/нежить.webp"
+  };
+
   const state = {
     cards: [],
     filtered: [],
@@ -95,11 +110,18 @@
     window.history.replaceState({}, "", next);
   }
 
-  function createChip(label, isActive, onClick) {
+  function createChip(label, isActive, onClick, options = {}) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `chip${isActive ? " is-active" : ""}`;
-    button.textContent = label;
+    if (options.icon) {
+      button.style.setProperty("--chip-icon", `url("${options.icon}")`);
+      button.classList.add("chip-with-icon");
+    }
+    button.innerHTML = `
+      ${options.icon ? '<span class="chip-icon" aria-hidden="true"></span>' : ""}
+      <span class="chip-label">${label}</span>
+    `;
     button.addEventListener("click", onClick);
     return button;
   }
@@ -132,7 +154,7 @@
             }
           }
           updateAndRender();
-        })
+        }, { icon: raceDecor[race] })
       );
     });
   }
@@ -148,7 +170,7 @@
             state.levels.add(level);
           }
           updateAndRender();
-        })
+        }, { icon: `./assset/tier${level}.png` })
       );
     });
   }
@@ -285,34 +307,12 @@
     }
 
     setStatus(`Найдено ${state.filtered.length} карт.`);
-
-    const groups = new Map();
+    const grid = document.createElement("div");
+    grid.className = "library-card-grid library-card-grid-flat";
     state.filtered.forEach((card, index) => {
-      const level = String(card.techLevel || 0);
-      if (!groups.has(level)) {
-        groups.set(level, []);
-      }
-      groups.get(level).push({ card, index });
+      grid.append(renderCard(card, index));
     });
-
-    [...groups.entries()].forEach(([level, entries]) => {
-      const section = document.createElement("section");
-      section.className = "library-group";
-      section.innerHTML = `
-        <div class="group-header">
-          <div>
-            <h2>Таверна ${level}</h2>
-            <p class="group-summary">${entries.length} карт в текущей выборке</p>
-          </div>
-        </div>
-      `;
-
-      const grid = document.createElement("div");
-      grid.className = "library-card-grid";
-      entries.forEach(({ card, index }) => grid.append(renderCard(card, index)));
-      section.append(grid);
-      resultsEl.append(section);
-    });
+    resultsEl.append(grid);
   }
 
   function applyFilters() {
@@ -355,17 +355,19 @@
         state.filtered.map((card) => ({
           ...card,
           exportImage: getCardArtUrl(card, "512x"),
-          image: getCardArtUrl(card, "512x"),
-          meta: `Таверна ${card.techLevel}`
+          image: getCardArtUrl(card, "512x")
         })),
         {
-          title: "Библиотека Полей сражений",
-          subtitle: `${state.filtered.length} карт • до 8 в ряд`,
           fileBaseName: parts.length ? `bg-${parts.join("-")}` : "bg-selection",
-          columns: 8,
-          artHeight: 286,
-          textLines: 3,
-          footerHeight: 88
+          columns: 6,
+          gap: 18,
+          cardWidth: 238,
+          artHeight: 332,
+          showHeader: false,
+          showText: false,
+          showMeta: false,
+          showCardBackground: false,
+          background: "#07101f"
         }
       );
 
