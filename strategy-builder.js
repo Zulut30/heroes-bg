@@ -17,7 +17,7 @@
   const EXPORT_HEIGHT = 1320;
   const SLOT_CARD_WIDTH = 0.158;
   const BOARD_INSET_X = 0.035;
-  const BOARD_INSET_Y = 0.06;
+  const BOARD_INSET_Y = 0.11;
 
   const raceNames = {
     NONE: "Без типа",
