@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Заклинания Полей сражений из Blizzard API</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="site-header">
+      <a class="brand-mark" href="./index.html">Battlegrounds Hub</a>
+      <nav class="site-nav" aria-label="Основная навигация">
+        <a class="nav-link" href="./index.html">Главная</a>
+        <a class="nav-link" href="./tier-list.html">Тир-лист</a>
+        <a class="nav-link" href="./hero-tier-builder.html">Конструктор тиров</a>
+        <a class="nav-link" href="./library.html">Библиотека карт</a>
+        <a class="nav-link is-active" href="./blizzard-spells.html">Заклинания API</a>
+        <a class="nav-link" href="./strategy-builder.html">Конструктор стратегий</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="page-hero">
+        <p class="eyebrow">Blizzard Hearthstone API</p>
+        <h1>Заклинания Полей сражений</h1>
+        <p class="hero-copy">
+          Эта страница загружает Battlegrounds-заклинания напрямую через серверный прокси к Blizzard API, чтобы мы могли дальше подключать к сайту актуальные метаданные, сеты, школы заклинаний и другие сущности.
+        </p>
+      </section>
+
+      <section class="api-panel">
+        <div class="controls-topline">
+          <div>
+            <p class="eyebrow">Импорт</p>
+            <h2 class="panel-title">Фильтры заклинаний</h2>
+          </div>
+          <div id="spells-status" class="library-status">Загружаю данные из Blizzard API...</div>
+        </div>
+
+        <div class="api-toolbar">
+          <label class="control-field">
+            <span class="control-label">Поиск</span>
+            <input id="spells-search" class="text-input" type="search" placeholder="Например, задание, награда, золото">
+          </label>
+
+          <label class="control-field">
+            <span class="control-label">Тип</span>
+            <select id="spells-filter" class="select-input">
+              <option value="ALL">Все заклинания</option>
+              <option value="QUEST">Задания</option>
+              <option value="REWARD">Награды</option>
+              <option value="HERO">Связанные с героем</option>
+              <option value="DUOS">Только дуо</option>
+              <option value="SOLOS">Только соло</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="api-panel">
+        <div class="results-bar">
+          <div id="spells-counter" class="library-status">0 карточек</div>
+        </div>
+        <div id="spells-grid" class="spells-grid" aria-live="polite"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="./blizzard-spells.js"></script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Конструктор тир-листа героев</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="site-header">
+      <a class="brand-mark" href="./index.html">Battlegrounds Hub</a>
+      <nav class="site-nav" aria-label="Основная навигация">
+        <a class="nav-link" href="./index.html">Главная</a>
+        <a class="nav-link" href="./tier-list.html">Тир-лист</a>
+        <a class="nav-link" href="./hero-tier-builder.html">Конструктор тиров</a>
+        <a class="nav-link" href="./library.html">Библиотека карт</a>
+        <a class="nav-link" href="./blizzard-spells.html">Заклинания API</a>
+        <a class="nav-link" href="./strategy-builder.html">Конструктор стратегий</a>
+      </nav>
+    </header>
+
+    <main class="hero-tier-layout">
+      <section class="hero-tier-sidebar">
+        <p class="eyebrow">Hero Tier Builder</p>
+        <h1 class="builder-title">Конструктор тир-листа героев</h1>
+        <p class="hero-copy">
+          Перетаскивай героев между рядами, собирай свой собственный тир-лист и быстро возвращайся к исходной раскладке.
+        </p>
+
+        <label class="control-field hero-tier-search">
+          <span class="control-label">Поиск героя</span>
+          <input id="hero-tier-search" class="text-input" type="search" placeholder="Например, Морхи, Н'Зот, Король-лич">
+        </label>
+
+        <div class="hero-tier-toolbar">
+          <button id="hero-tier-reset" class="secondary-button" type="button">Сбросить</button>
+          <button id="hero-tier-unassigned" class="download-button" type="button">Все в пул</button>
+        </div>
+
+        <div id="hero-tier-summary" class="library-status hero-tier-summary">Загружаю героев...</div>
+        <div id="hero-tier-pool" class="hero-tier-pool" aria-live="polite"></div>
+      </section>
+
+      <section class="hero-tier-board">
+        <div class="builder-canvas-head">
+          <div>
+            <p class="eyebrow">Drag and Drop</p>
+            <h2 class="panel-title">Текущие тиры</h2>
+          </div>
+          <div id="hero-tier-counter" class="filter-caption">0 героев распределено</div>
+        </div>
+
+        <div id="hero-tier-rows" class="tier-builder-rows"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="./tier-data.js"></script>
+  <script src="./hero-tier-builder.js"></script>
+</body>
+</html>
