@@ -8,6 +8,8 @@
   --muted: #b5bfd1;
   --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
   --tile-radius: 18px;
+  --card-width: 174px;
+  --card-media-ratio: 256 / 272;
   --s: #f4ce64;
   --a: #f28f55;
   --b: #62d1a5;
@@ -181,13 +183,15 @@ h1 {
 
 .hero-grid {
   display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(150px, var(--card-width)));
+  justify-content: start;
+  align-items: start;
   gap: 14px;
 }
 
 .hero-card {
   position: relative;
-  min-height: 176px;
+  width: 100%;
   overflow: hidden;
   border-radius: var(--tile-radius);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -206,8 +210,10 @@ h1 {
 .hero-placeholder {
   display: block;
   width: 100%;
-  aspect-ratio: 1 / 1.18;
-  object-fit: cover;
+  aspect-ratio: var(--card-media-ratio);
+  object-fit: contain;
+  object-position: top center;
+  image-rendering: auto;
 }
 
 .hero-placeholder {
@@ -265,7 +271,7 @@ h1 {
 
 @media (max-width: 1280px) {
   .hero-grid {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(150px, var(--card-width)));
   }
 }
 
@@ -289,13 +295,13 @@ h1 {
   }
 
   .hero-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(145px, 1fr));
   }
 }
 
 @media (max-width: 640px) {
   .hero-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
   }
 
   .tier-meta {

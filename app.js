@@ -285,13 +285,16 @@ async function exportTierImage(tierInfo) {
   const columns = 8;
   const gap = 24;
   const padding = 42;
-  const cardWidth = 156;
-  const cardHeight = 214;
+  const imageRatio = 272 / 256;
+  const cardWidth = 176;
+  const imageHeight = Math.round(cardWidth * imageRatio);
+  const footerHeight = 56;
+  const cardHeight = imageHeight + footerHeight;
   const rows = Math.ceil(tierInfo.heroes.length / columns);
   const width = padding * 2 + columns * cardWidth + (columns - 1) * gap;
   const height = 178 + padding * 2 + rows * cardHeight + (rows - 1) * gap;
   const canvas = document.createElement("canvas");
-  const scale = window.devicePixelRatio > 1 ? 2 : 1;
+  const scale = Math.max(3, Math.ceil(window.devicePixelRatio || 1));
 
   canvas.width = width * scale;
   canvas.height = height * scale;
@@ -300,6 +303,8 @@ async function exportTierImage(tierInfo) {
 
   const ctx = canvas.getContext("2d");
   ctx.scale(scale, scale);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
 
   const images = await Promise.all(
     tierInfo.heroes.map((hero) => (hero.image ? loadImage(hero.image) : Promise.resolve(null))),
@@ -358,27 +363,27 @@ async function exportTierImage(tierInfo) {
 
     const loadedImage = images[index];
     if (loadedImage) {
-      ctx.drawImage(loadedImage, x, y, cardWidth, cardHeight);
+      ctx.drawImage(loadedImage, x, y, cardWidth, imageHeight);
     } else {
-      const placeholderGradient = ctx.createLinearGradient(x, y, x, y + cardHeight);
+      const placeholderGradient = ctx.createLinearGradient(x, y, x, y + imageHeight);
       placeholderGradient.addColorStop(0, "rgba(244, 206, 100, 0.22)");
       placeholderGradient.addColorStop(1, "rgba(18, 30, 55, 0.92)");
       ctx.fillStyle = placeholderGradient;
-      ctx.fillRect(x, y, cardWidth, cardHeight);
+      ctx.fillRect(x, y, cardWidth, imageHeight);
       ctx.fillStyle = "#fff0b5";
       ctx.font = "800 20px Manrope";
       ctx.textAlign = "center";
-      wrapText(ctx, hero.name, x + cardWidth / 2, y + cardHeight / 2 - 16, cardWidth - 22, 24);
+      wrapText(ctx, hero.name, x + cardWidth / 2, y + imageHeight / 2 - 16, cardWidth - 22, 24);
       ctx.font = "700 15px Manrope";
       ctx.fillStyle = "rgba(255, 246, 214, 0.8)";
-      ctx.fillText("PNG не найден", x + cardWidth / 2, y + cardHeight - 24);
+      ctx.fillText("PNG не найден", x + cardWidth / 2, y + imageHeight - 24);
     }
 
-    const fade = ctx.createLinearGradient(x, y + cardHeight * 0.48, x, y + cardHeight);
+    const fade = ctx.createLinearGradient(x, y + imageHeight * 0.48, x, y + imageHeight);
     fade.addColorStop(0, "rgba(4, 8, 15, 0)");
     fade.addColorStop(1, "rgba(4, 8, 15, 0.96)");
     ctx.fillStyle = fade;
-    ctx.fillRect(x, y, cardWidth, cardHeight);
+    ctx.fillRect(x, y, cardWidth, imageHeight);
     ctx.restore();
 
     ctx.fillStyle = "rgba(3, 8, 15, 0.72)";
@@ -391,7 +396,7 @@ async function exportTierImage(tierInfo) {
 
     ctx.fillStyle = "#f8f4ea";
     ctx.font = "800 16px Manrope";
-    wrapText(ctx, hero.name, x + 14, y + cardHeight - 48, cardWidth - 28, 19, false);
+    wrapText(ctx, hero.name, x + 14, y + cardHeight - 36, cardWidth - 28, 19, false);
   });
 
   const link = document.createElement("a");
