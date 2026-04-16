@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Heroes Battlegrounds Tier List</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <p class="eyebrow">Hearthstone Battlegrounds</p>
+      <h1>Тир-лист героев</h1>
+      <p class="hero-copy">
+        Все герои собраны по тиру в виде сетки. Для каждого тира можно отдельно скачать PNG:
+        в экспорт попадают все герои из секции, не больше 8 карточек в ряд.
+      </p>
+      <div class="hero-stats" id="hero-stats"></div>
+    </header>
+
+    <main id="tiers" class="tiers" aria-live="polite"></main>
+  </div>
+
+  <template id="tier-template">
+    <section class="tier-section">
+      <div class="tier-header">
+        <div class="tier-meta">
+          <span class="tier-badge"></span>
+          <div>
+            <h2 class="tier-title"></h2>
+            <p class="tier-summary"></p>
+          </div>
+        </div>
+        <button class="download-button" type="button">Скачать PNG</button>
+      </div>
+      <div class="hero-grid"></div>
+    </section>
+  </template>
+
+  <script src="./app.js"></script>
+</body>
+</html>
