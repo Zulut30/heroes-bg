@@ -142,7 +142,7 @@
     const title = options.title || "Тир-лист Героев";
     const subtitle = options.subtitle || `${cards.length} карточек`;
     const fileBaseName = options.fileBaseName || "battlegrounds-export";
-    const columns = Math.min(options.columns || 8, 8);
+    const columns = Math.min(options.columns || 10, 10);
     const gap = options.gap || 28;
     const cardWidth = options.cardWidth || 176;
     const artHeight = options.artHeight || Math.round(cardWidth * (options.artRatio || 1.38));

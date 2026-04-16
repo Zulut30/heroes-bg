@@ -51,18 +51,18 @@
         {
           fileBaseName,
           columns: 10,
-          gap: 6,
-          padding: 4,
-          cardWidth: 206,
-          artHeight: 312,
+          gap: 4,
+          padding: 2,
+          cardWidth: 214,
+          artHeight: 324,
           showHeader: false,
           showText: false,
           showMeta: false,
           showCardBackground: false,
           background: "transparent",
-          maxWidthOrHeight: 3400,
-          maxSizeMB: 2,
-          initialQuality: 0.97,
+          maxWidthOrHeight: 3600,
+          maxSizeMB: 1.95,
+          initialQuality: 0.98,
           outputQuality: 0.99
         }
       );
