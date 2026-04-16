@@ -1,5 +1,6 @@
 (function () {
   const MAX_DOWNLOAD_SIZE_MB = 1.95;
+  let picaInstance = null;
 
   function loadImage(src) {
     return new Promise((resolve, reject) => {
@@ -100,6 +101,49 @@
     ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
   }
 
+  function getPicaInstance() {
+    if (!window.pica) {
+      return null;
+    }
+
+    if (!picaInstance) {
+      picaInstance = window.pica({
+        features: ["js", "wasm", "ww"]
+      });
+    }
+
+    return picaInstance;
+  }
+
+  async function maybeDownscaleCanvas(sourceCanvas, options = {}) {
+    const targetMax = options.maxWidthOrHeight || 3200;
+    const currentMax = Math.max(sourceCanvas.width, sourceCanvas.height);
+
+    if (currentMax <= targetMax) {
+      return sourceCanvas;
+    }
+
+    const ratio = targetMax / currentMax;
+    const targetCanvas = document.createElement("canvas");
+    targetCanvas.width = Math.round(sourceCanvas.width * ratio);
+    targetCanvas.height = Math.round(sourceCanvas.height * ratio);
+
+    const pica = getPicaInstance();
+    if (pica) {
+      await pica.resize(sourceCanvas, targetCanvas, {
+        filter: "mks2013",
+        unsharpAmount: 160,
+        unsharpRadius: 0.6,
+        unsharpThreshold: 1
+      });
+      return targetCanvas;
+    }
+
+    const ctx = targetCanvas.getContext("2d");
+    ctx.drawImage(sourceCanvas, 0, 0, targetCanvas.width, targetCanvas.height);
+    return targetCanvas;
+  }
+
   async function compressForWordPress(blob, fileName, options = {}) {
     if (!window.imageCompression) {
       return blob;
@@ -108,10 +152,10 @@
     try {
       const compressed = await window.imageCompression(blob, {
         maxSizeMB: options.maxSizeMB || MAX_DOWNLOAD_SIZE_MB,
-        maxWidthOrHeight: options.maxWidthOrHeight || 2600,
+        maxWidthOrHeight: options.maxWidthOrHeight || 3200,
         useWebWorker: true,
         fileType: "image/webp",
-        initialQuality: options.initialQuality || 0.94,
+        initialQuality: options.initialQuality || 0.95,
         preserveExif: false
       });
 
@@ -143,17 +187,19 @@
     const subtitle = options.subtitle || `${cards.length} карточек`;
     const fileBaseName = options.fileBaseName || "battlegrounds-export";
     const columns = Math.min(options.columns || 10, 10);
-    const gap = options.gap || 28;
-    const cardWidth = options.cardWidth || 176;
-    const artHeight = options.artHeight || Math.round(cardWidth * (options.artRatio || 1.38));
+    const renderScale = options.renderScale || 1;
+    const gap = Math.round((options.gap || 28) * renderScale);
+    const baseCardWidth = options.cardWidth || 176;
+    const cardWidth = Math.round(baseCardWidth * renderScale);
+    const artHeight = Math.round((options.artHeight || Math.round(baseCardWidth * (options.artRatio || 1.38))) * renderScale);
     const showText = options.showText !== false;
     const showMeta = options.showMeta !== false;
     const textLines = options.textLines || 3;
-    const footerHeight = options.footerHeight || 28 + textLines * 22 + 18;
+    const footerHeight = Math.round((options.footerHeight || 28 + textLines * 22 + 18) * renderScale);
     const bodyHeight = showText || showMeta ? footerHeight : 0;
-    const cardHeight = options.cardHeight || artHeight + bodyHeight + 24;
-    const padding = options.padding || 46;
-    const headerHeight = showHeader ? (options.headerHeight || 180) : 24;
+    const cardHeight = options.cardHeight || artHeight + bodyHeight + Math.round(24 * renderScale);
+    const padding = Math.round((options.padding || 46) * renderScale);
+    const headerHeight = showHeader ? Math.round((options.headerHeight || 180) * renderScale) : Math.round(24 * renderScale);
     const rows = Math.ceil(cards.length / columns);
     const canvas = document.createElement("canvas");
 
@@ -176,12 +222,12 @@
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       ctx.fillStyle = "rgba(248, 241, 219, 0.92)";
-      ctx.font = '700 42px "BgDisplay", Georgia, serif';
-      ctx.fillText(title, padding, 74);
+      ctx.font = `700 ${Math.round(42 * renderScale)}px "BgDisplay", Georgia, serif`;
+      ctx.fillText(title, padding, Math.round(74 * renderScale));
 
       ctx.fillStyle = "rgba(200, 210, 232, 0.9)";
-      ctx.font = '500 22px "Segoe UI", sans-serif';
-      ctx.fillText(subtitle, padding, 112);
+      ctx.font = `500 ${Math.round(22 * renderScale)}px "Segoe UI", sans-serif`;
+      ctx.fillText(subtitle, padding, Math.round(112 * renderScale));
     }
 
     for (const [index, card] of cards.entries()) {
@@ -189,30 +235,33 @@
       const column = index % columns;
       const x = padding + column * (cardWidth + gap);
       const y = headerHeight + row * (cardHeight + gap);
-      const artY = y + 14;
       const imageSource = card.exportImage || card.image || card.artUrl;
       const img = await loadImageFromSource(imageSource);
 
       if (showCardBackground) {
         ctx.save();
-        roundedRect(ctx, x, y, cardWidth, cardHeight, 22);
+        roundedRect(ctx, x, y, cardWidth, cardHeight, Math.round(22 * renderScale));
         ctx.fillStyle = "rgba(13, 20, 35, 0.96)";
         ctx.fill();
         ctx.restore();
       }
 
       ctx.save();
-      roundedRect(ctx, x, y, cardWidth, artHeight, 18);
+      roundedRect(ctx, x, y, cardWidth, artHeight, Math.round(18 * renderScale));
       ctx.clip();
       drawImageContain(ctx, img, x, y, cardWidth, artHeight);
       ctx.restore();
 
       if (showText) {
         ctx.fillStyle = "rgba(248, 241, 219, 0.96)";
-        ctx.font = '700 20px "Segoe UI", sans-serif';
-        const lines = wrapText(ctx, card.name, cardWidth - 22).slice(0, textLines);
+        ctx.font = `700 ${Math.round(20 * renderScale)}px "Segoe UI", sans-serif`;
+        const lines = wrapText(ctx, card.name, cardWidth - Math.round(22 * renderScale)).slice(0, textLines);
         lines.forEach((line, lineIndex) => {
-          ctx.fillText(line, x + 12, y + artHeight + 28 + lineIndex * 22);
+          ctx.fillText(
+            line,
+            x + Math.round(12 * renderScale),
+            y + artHeight + Math.round(28 * renderScale) + lineIndex * Math.round(22 * renderScale)
+          );
         });
       }
 
@@ -226,12 +275,19 @@
 
       if (showMeta && metaBits.length) {
         ctx.fillStyle = "rgba(200, 210, 232, 0.88)";
-        ctx.font = '500 16px "Segoe UI", sans-serif';
-        ctx.fillText(metaBits.join(" • "), x + 12, y + cardHeight - 16);
+        ctx.font = `500 ${Math.round(16 * renderScale)}px "Segoe UI", sans-serif`;
+        ctx.fillText(
+          metaBits.join(" • "),
+          x + Math.round(12 * renderScale),
+          y + cardHeight - Math.round(16 * renderScale)
+        );
       }
     }
 
-    const rawBlob = await canvasToBlob(canvas, "image/webp", options.outputQuality || 0.96);
+    const finalCanvas = await maybeDownscaleCanvas(canvas, {
+      maxWidthOrHeight: options.maxWidthOrHeight
+    });
+    const rawBlob = await canvasToBlob(finalCanvas, "image/webp", options.outputQuality || 0.97);
     const resultBlob = await compressForWordPress(rawBlob, fileBaseName, {
       maxSizeMB: options.maxSizeMB,
       maxWidthOrHeight: options.maxWidthOrHeight,

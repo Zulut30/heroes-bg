@@ -377,20 +377,21 @@
         })),
         {
           fileBaseName: parts.length ? `bg-${parts.join("-")}` : "bg-selection",
-          columns: 10,
-          gap: 4,
-          padding: 2,
-          cardWidth: 214,
-          artHeight: 300,
+          columns: 6,
+          gap: 10,
+          padding: 10,
+          cardWidth: 360,
+          artHeight: 504,
+          renderScale: 1.45,
           showHeader: false,
           showText: false,
           showMeta: false,
           showCardBackground: false,
           background: "transparent",
-          maxWidthOrHeight: 3600,
+          maxWidthOrHeight: 3200,
           maxSizeMB: 1.95,
-          initialQuality: 0.98,
-          outputQuality: 0.99
+          initialQuality: 0.96,
+          outputQuality: 0.98
         }
       );
 
