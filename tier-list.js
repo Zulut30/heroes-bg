@@ -49,15 +49,16 @@
           ...hero
         })),
         {
-          title: `Тир-лист Героев • ${tier.tier}-тир`,
-          subtitle: `${tier.heroes.length} героев • крупные портреты для статьи`,
           fileBaseName,
           columns: 6,
           gap: 30,
           cardWidth: 220,
           artHeight: 340,
+          showHeader: false,
           showText: false,
-          showMeta: false
+          showMeta: false,
+          showCardBackground: false,
+          background: "transparent"
         }
       );
       button.textContent = "Скачать WebP";

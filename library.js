@@ -9,6 +9,7 @@
   const sortSelect = document.getElementById("sort-select");
   const resetButton = document.getElementById("reset-filters");
   const exportButton = document.getElementById("export-selection");
+  const excludeDuosInput = document.getElementById("exclude-duos");
   const lightbox = document.getElementById("lightbox");
   const lightboxImage = document.getElementById("lightbox-image");
   const lightboxTitle = document.getElementById("lightbox-title");
@@ -54,6 +55,7 @@
     search: "",
     races: new Set(),
     levels: new Set(),
+    excludeDuos: false,
     sort: "tech-name",
     lightboxIndex: -1
   };
@@ -63,6 +65,10 @@
       return card?.artUrl || "";
     }
     return `/api/card-art?id=${encodeURIComponent(card.id)}&locale=ruRU&size=${encodeURIComponent(size)}`;
+  }
+
+  function isDuoCard(card) {
+    return /^BGDUO/i.test(String(card?.id || ""));
   }
 
   function setStatus(message) {
@@ -85,9 +91,11 @@
     state.sort = params.get("sort") || "tech-name";
     state.races = new Set((params.get("r") || "").split(",").filter(Boolean));
     state.levels = new Set((params.get("lvl") || "").split(",").filter(Boolean));
+    state.excludeDuos = params.get("duos") === "off";
 
     searchInput.value = state.search;
     sortSelect.value = state.sort;
+    excludeDuosInput.checked = state.excludeDuos;
   }
 
   function syncUrlFromState() {
@@ -104,6 +112,9 @@
     }
     if (state.sort !== "tech-name") {
       params.set("sort", state.sort);
+    }
+    if (state.excludeDuos) {
+      params.set("duos", "off");
     }
 
     const next = `${window.location.pathname}${params.toString() ? `?${params}` : ""}`;
@@ -190,6 +201,13 @@
     }
 
     return state.levels.has(String(card.techLevel || 0));
+  }
+
+  function matchesDuo(card) {
+    if (!state.excludeDuos) {
+      return true;
+    }
+    return !isDuoCard(card);
   }
 
   function matchesSearch(card) {
@@ -317,7 +335,7 @@
 
   function applyFilters() {
     state.filtered = sortCards(
-      state.cards.filter((card) => matchesRace(card) && matchesLevel(card) && matchesSearch(card))
+      state.cards.filter((card) => matchesRace(card) && matchesLevel(card) && matchesSearch(card) && matchesDuo(card))
     );
   }
 
@@ -367,7 +385,7 @@
           showText: false,
           showMeta: false,
           showCardBackground: false,
-          background: "#07101f"
+          background: "transparent"
         }
       );
 
@@ -419,9 +437,16 @@
     state.search = "";
     state.races.clear();
     state.levels.clear();
+    state.excludeDuos = false;
     state.sort = "tech-name";
     searchInput.value = "";
     sortSelect.value = state.sort;
+    excludeDuosInput.checked = false;
+    updateAndRender();
+  });
+
+  excludeDuosInput.addEventListener("change", (event) => {
+    state.excludeDuos = event.target.checked;
     updateAndRender();
   });
 

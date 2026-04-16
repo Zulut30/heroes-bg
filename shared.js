@@ -162,8 +162,10 @@
 
     const ctx = canvas.getContext("2d");
 
-    ctx.fillStyle = background;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (background !== "transparent") {
+      ctx.fillStyle = background;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
 
     if (showHeader) {
       const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
