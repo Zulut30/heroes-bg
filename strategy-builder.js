@@ -15,7 +15,7 @@
   const BOARD_SLOT_COUNT = BOARD_COLUMNS * BOARD_ROWS;
   const EXPORT_WIDTH = 2200;
   const EXPORT_HEIGHT = 1320;
-  const SLOT_CARD_WIDTH = 0.19;
+  const SLOT_CARD_WIDTH = 0.18;
 
   const raceNames = {
     NONE: "Без типа",
@@ -264,7 +264,7 @@
       const image = await window.Shared.loadImageFromSource(card.artUrl);
       const slotPosition = getSlotPosition(card.slot);
       const cardWidth = EXPORT_WIDTH * SLOT_CARD_WIDTH;
-      const cardHeight = cardWidth / 0.76;
+      const cardHeight = cardWidth / 0.715;
       const x = EXPORT_WIDTH * slotPosition.x - cardWidth / 2;
       const y = EXPORT_HEIGHT * slotPosition.y - cardHeight / 2;
       ctx.drawImage(image, x, y, cardWidth, cardHeight);
