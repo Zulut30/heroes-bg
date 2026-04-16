@@ -10,6 +10,13 @@
   const boardEl = document.getElementById("strategy-board");
   const counterEl = document.getElementById("builder-counter");
 
+  const BOARD_COLUMNS = 5;
+  const BOARD_ROWS = 3;
+  const BOARD_SLOT_COUNT = BOARD_COLUMNS * BOARD_ROWS;
+  const EXPORT_WIDTH = 2200;
+  const EXPORT_HEIGHT = 1320;
+  const SLOT_CARD_WIDTH = 0.19;
+
   const raceNames = {
     NONE: "Без типа",
     ALL: "Все типы",
@@ -53,6 +60,34 @@
   function syncCounter() {
     counterEl.textContent = `${state.placed.length} карт на полотне`;
     boardEl.classList.toggle("is-empty", state.placed.length === 0);
+  }
+
+  function getSlotPosition(slot) {
+    const column = slot % BOARD_COLUMNS;
+    const row = Math.floor(slot / BOARD_COLUMNS);
+    return {
+      x: (column + 0.5) / BOARD_COLUMNS,
+      y: (row + 0.5) / BOARD_ROWS
+    };
+  }
+
+  function getNearestSlot(clientX, clientY) {
+    const rect = boardEl.getBoundingClientRect();
+    const relativeX = Math.min(0.999, Math.max(0, (clientX - rect.left) / rect.width));
+    const relativeY = Math.min(0.999, Math.max(0, (clientY - rect.top) / rect.height));
+    const column = Math.min(BOARD_COLUMNS - 1, Math.max(0, Math.floor(relativeX * BOARD_COLUMNS)));
+    const row = Math.min(BOARD_ROWS - 1, Math.max(0, Math.floor(relativeY * BOARD_ROWS)));
+    return row * BOARD_COLUMNS + column;
+  }
+
+  function getFirstFreeSlot() {
+    const occupied = new Set(state.placed.map((card) => card.slot));
+    for (let slot = 0; slot < BOARD_SLOT_COUNT; slot += 1) {
+      if (!occupied.has(slot)) {
+        return slot;
+      }
+    }
+    return null;
   }
 
   function matchesFilters(card) {
@@ -104,15 +139,19 @@
     });
   }
 
-  function addCardToBoard(card, x = 0.5, y = 0.5) {
+  function addCardToBoard(card, preferredSlot = null) {
+    const slot = preferredSlot ?? getFirstFreeSlot();
+    if (slot === null) {
+      setStatus("Все 15 слотов заняты. Удали карту или переставь существующую.");
+      return;
+    }
+
     const placedCard = {
       uid: crypto.randomUUID(),
       id: card.id,
       name: card.name,
       artUrl: getCardArtUrl(card, "512x"),
-      x,
-      y,
-      width: 0.22
+      slot
     };
     state.placed.push(placedCard);
     state.activeId = placedCard.uid;
@@ -127,10 +166,31 @@
     renderBoard();
   }
 
-  function updatePlacedCard(uid, nextPatch) {
-    state.placed = state.placed.map((card) => (
-      card.uid === uid ? { ...card, ...nextPatch } : card
-    ));
+  function movePlacedCardToSlot(uid, targetSlot) {
+    const movingCard = state.placed.find((card) => card.uid === uid);
+    if (!movingCard) {
+      return;
+    }
+
+    const occupant = state.placed.find((card) => card.slot === targetSlot && card.uid !== uid);
+    if (!occupant) {
+      state.placed = state.placed.map((card) => (
+        card.uid === uid ? { ...card, slot: targetSlot } : card
+      ));
+      renderBoard();
+      return;
+    }
+
+    const originalSlot = movingCard.slot;
+    state.placed = state.placed.map((card) => {
+      if (card.uid === uid) {
+        return { ...card, slot: targetSlot };
+      }
+      if (card.uid === occupant.uid) {
+        return { ...card, slot: originalSlot };
+      }
+      return card;
+    });
     renderBoard();
   }
 
@@ -139,17 +199,17 @@
 
     const hint = document.createElement("div");
     hint.className = "strategy-board-hint";
-    hint.textContent = "Перетащи сюда 5-6 карт из библиотеки, чтобы собрать стратегию";
+    hint.textContent = "Перетащи карты в невидимую сетку 5 × 3 и собери стратегию";
     if (!state.placed.length) {
       boardEl.append(hint);
     }
 
     state.placed.forEach((card) => {
+      const slotPosition = getSlotPosition(card.slot);
       const tile = document.createElement("article");
       tile.className = `placed-card${state.activeId === card.uid ? " is-active" : ""}`;
-      tile.style.left = `${card.x * 100}%`;
-      tile.style.top = `${card.y * 100}%`;
-      tile.style.width = `${card.width * 100}%`;
+      tile.style.left = `${slotPosition.x * 100}%`;
+      tile.style.top = `${slotPosition.y * 100}%`;
       tile.innerHTML = `
         <img class="placed-card-art" src="${card.artUrl}" alt="${card.name}">
         <button class="placed-card-remove" type="button" aria-label="Удалить карту">×</button>
@@ -159,22 +219,23 @@
         if (event.target.closest(".placed-card-remove")) {
           return;
         }
+
         state.activeId = card.uid;
-        tile.setPointerCapture(event.pointerId);
-        const rect = boardEl.getBoundingClientRect();
+        const boardRect = boardEl.getBoundingClientRect();
+        tile.classList.add("is-dragging");
 
         const move = (moveEvent) => {
-          const nextX = Math.min(1, Math.max(0, (moveEvent.clientX - rect.left) / rect.width));
-          const nextY = Math.min(1, Math.max(0, (moveEvent.clientY - rect.top) / rect.height));
-          state.placed = state.placed.map((item) => (
-            item.uid === card.uid ? { ...item, x: nextX, y: nextY } : item
-          ));
-          renderBoard();
+          const localX = moveEvent.clientX - boardRect.left;
+          const localY = moveEvent.clientY - boardRect.top;
+          tile.style.left = `${localX}px`;
+          tile.style.top = `${localY}px`;
         };
 
-        const release = () => {
+        const release = (releaseEvent) => {
           window.removeEventListener("pointermove", move);
           window.removeEventListener("pointerup", release);
+          tile.classList.remove("is-dragging");
+          movePlacedCardToSlot(card.uid, getNearestSlot(releaseEvent.clientX, releaseEvent.clientY));
         };
 
         window.addEventListener("pointermove", move);
@@ -195,18 +256,17 @@
     }
 
     const canvas = document.createElement("canvas");
-    const width = 2200;
-    const height = 1240;
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = EXPORT_WIDTH;
+    canvas.height = EXPORT_HEIGHT;
     const ctx = canvas.getContext("2d");
 
     for (const card of state.placed) {
       const image = await window.Shared.loadImageFromSource(card.artUrl);
-      const cardWidth = width * card.width;
-      const cardHeight = cardWidth / 0.715;
-      const x = width * card.x - cardWidth / 2;
-      const y = height * card.y - cardHeight / 2;
+      const slotPosition = getSlotPosition(card.slot);
+      const cardWidth = EXPORT_WIDTH * SLOT_CARD_WIDTH;
+      const cardHeight = cardWidth / 0.76;
+      const x = EXPORT_WIDTH * slotPosition.x - cardWidth / 2;
+      const y = EXPORT_HEIGHT * slotPosition.y - cardHeight / 2;
       ctx.drawImage(image, x, y, cardWidth, cardHeight);
     }
 
@@ -259,10 +319,7 @@
       return;
     }
 
-    const rect = boardEl.getBoundingClientRect();
-    const x = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
-    const y = Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
-    addCardToBoard(card, x, y);
+    addCardToBoard(card, getNearestSlot(event.clientX, event.clientY));
   });
 
   searchInput.addEventListener("input", window.Shared.debounce((event) => {
