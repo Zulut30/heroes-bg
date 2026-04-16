@@ -50,12 +50,14 @@
         })),
         {
           title: `Тир-лист Героев • ${tier.tier}-тир`,
-          subtitle: `${tier.heroes.length} героев • до 8 карточек в ряд`,
+          subtitle: `${tier.heroes.length} героев • крупные портреты для статьи`,
           fileBaseName,
-          columns: 8,
-          artHeight: 252,
-          textLines: 3,
-          footerHeight: 88
+          columns: 6,
+          gap: 30,
+          cardWidth: 220,
+          artHeight: 340,
+          showText: false,
+          showMeta: false
         }
       );
       button.textContent = "Скачать WebP";

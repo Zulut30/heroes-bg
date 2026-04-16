@@ -143,9 +143,12 @@
     const gap = options.gap || 28;
     const cardWidth = options.cardWidth || 176;
     const artHeight = options.artHeight || Math.round(cardWidth * (options.artRatio || 1.38));
+    const showText = options.showText !== false;
+    const showMeta = options.showMeta !== false;
     const textLines = options.textLines || 3;
     const footerHeight = options.footerHeight || 28 + textLines * 22 + 18;
-    const cardHeight = options.cardHeight || artHeight + footerHeight + 24;
+    const bodyHeight = showText || showMeta ? footerHeight : 0;
+    const cardHeight = options.cardHeight || artHeight + bodyHeight + 24;
     const padding = options.padding || 46;
     const headerHeight = options.headerHeight || 180;
     const rows = Math.ceil(cards.length / columns);
@@ -195,12 +198,14 @@
       drawImageContain(ctx, img, x + 10, artY, cardWidth - 20, artHeight);
       ctx.restore();
 
-      ctx.fillStyle = "rgba(248, 241, 219, 0.96)";
-      ctx.font = '700 20px "Segoe UI", sans-serif';
-      const lines = wrapText(ctx, card.name, cardWidth - 22).slice(0, textLines);
-      lines.forEach((line, lineIndex) => {
-        ctx.fillText(line, x + 12, artY + artHeight + 28 + lineIndex * 22);
-      });
+      if (showText) {
+        ctx.fillStyle = "rgba(248, 241, 219, 0.96)";
+        ctx.font = '700 20px "Segoe UI", sans-serif';
+        const lines = wrapText(ctx, card.name, cardWidth - 22).slice(0, textLines);
+        lines.forEach((line, lineIndex) => {
+          ctx.fillText(line, x + 12, artY + artHeight + 28 + lineIndex * 22);
+        });
+      }
 
       const metaBits = [];
       if (card.meta) {
@@ -210,7 +215,7 @@
         metaBits.push(`Среднее ${card.averagePlace}`);
       }
 
-      if (metaBits.length) {
+      if (showMeta && metaBits.length) {
         ctx.fillStyle = "rgba(200, 210, 232, 0.88)";
         ctx.font = '500 16px "Segoe UI", sans-serif';
         ctx.fillText(metaBits.join(" • "), x + 12, y + cardHeight - 16);
