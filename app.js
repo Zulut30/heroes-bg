@@ -155,6 +155,8 @@ const tierColors = {
 const tiersContainer = document.querySelector("#tiers");
 const tierTemplate = document.querySelector("#tier-template");
 const statsContainer = document.querySelector("#hero-stats");
+const MAX_DOWNLOAD_SIZE_MB = 2;
+const MAX_DOWNLOAD_SIZE_BYTES = MAX_DOWNLOAD_SIZE_MB * 1024 * 1024;
 
 function buildStats() {
   const totalHeroes = tierData.reduce((sum, tier) => sum + tier.heroes.length, 0);
@@ -234,10 +236,10 @@ function renderTiers() {
 
     button.addEventListener("click", async () => {
       button.disabled = true;
-      button.textContent = "Собираю PNG...";
+      button.textContent = "Собираю WebP...";
       try {
         await exportTierImage(tierInfo);
-        button.textContent = "PNG скачан";
+        button.textContent = "WebP скачан";
       } catch (error) {
         console.error(error);
         button.textContent = "Ошибка экспорта";
@@ -245,7 +247,7 @@ function renderTiers() {
 
       setTimeout(() => {
         button.disabled = false;
-        button.textContent = "Скачать PNG";
+        button.textContent = "Скачать WebP";
       }, 1800);
     });
 
@@ -264,6 +266,53 @@ function loadImage(src) {
     image.onload = () => resolve(image);
     image.onerror = () => resolve(null);
     image.src = src;
+  });
+}
+
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob);
+      } else {
+        reject(new Error("Не удалось создать blob из canvas."));
+      }
+    }, type, quality);
+  });
+}
+
+async function compressForWordPress(canvas, fileBaseName) {
+  const webpBlob = await canvasToBlob(canvas, "image/webp", 0.96);
+
+  if (webpBlob.size <= MAX_DOWNLOAD_SIZE_BYTES) {
+    return webpBlob;
+  }
+
+  if (!window.imageCompression) {
+    return webpBlob;
+  }
+
+  const sourceFile = new File([webpBlob], `${fileBaseName}.webp`, { type: "image/webp" });
+  const compressed = await window.imageCompression(sourceFile, {
+    maxSizeMB: MAX_DOWNLOAD_SIZE_MB,
+    fileType: "image/webp",
+    initialQuality: 0.92,
+    useWebWorker: true,
+    alwaysKeepResolution: true,
+    preserveExif: false,
+  });
+
+  if (compressed.size <= MAX_DOWNLOAD_SIZE_BYTES) {
+    return compressed;
+  }
+
+  return window.imageCompression(sourceFile, {
+    maxSizeMB: MAX_DOWNLOAD_SIZE_MB,
+    fileType: "image/webp",
+    initialQuality: 0.84,
+    maxWidthOrHeight: Math.round(Math.max(canvas.width, canvas.height) / 3.5),
+    useWebWorker: true,
+    preserveExif: false,
   });
 }
 
@@ -399,10 +448,13 @@ async function exportTierImage(tierInfo) {
     wrapText(ctx, hero.name, x + 14, y + cardHeight - 36, cardWidth - 28, 19, false);
   });
 
+  const compressedBlob = await compressForWordPress(canvas, `${tierInfo.tier.toLowerCase()}-tier-heroes`);
+  const objectUrl = URL.createObjectURL(compressedBlob);
   const link = document.createElement("a");
-  link.href = canvas.toDataURL("image/png");
-  link.download = `${tierInfo.tier.toLowerCase()}-tier-heroes.png`;
+  link.href = objectUrl;
+  link.download = `${tierInfo.tier.toLowerCase()}-tier-heroes.webp`;
   link.click();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
 }
 
 function wrapText(ctx, text, x, y, maxWidth, lineHeight, center = true) {

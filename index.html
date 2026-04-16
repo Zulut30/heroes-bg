@@ -12,8 +12,9 @@
       <p class="eyebrow">Hearthstone Battlegrounds</p>
       <h1>Тир-лист героев</h1>
       <p class="hero-copy">
-        Все герои собраны по тиру в виде сетки. Для каждого тира можно отдельно скачать PNG:
-        в экспорт попадают все герои из секции, не больше 8 карточек в ряд.
+        Все герои собраны по тиру в виде сетки. Для каждого тира можно отдельно скачать WebP:
+        в экспорт попадают все герои из секции, не больше 8 карточек в ряд, а итоговый файл
+        автоматически сжимается для загрузки в WordPress до размера около 2 MB.
       </p>
       <div class="hero-stats" id="hero-stats"></div>
     </header>
@@ -31,12 +32,13 @@
             <p class="tier-summary"></p>
           </div>
         </div>
-        <button class="download-button" type="button">Скачать PNG</button>
+        <button class="download-button" type="button">Скачать WebP</button>
       </div>
       <div class="hero-grid"></div>
     </section>
   </template>
 
+  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>
