@@ -82,6 +82,17 @@
             </label>
           </div>
 
+          <div class="builder-filter-row builder-filter-row-secondary">
+            <label class="control-field">
+              <span class="control-label">Размер аксессуара</span>
+              <select id="tier-builder-accessory-size" class="select-input" disabled>
+                <option value="ALL">Все аксессуары</option>
+                <option value="SMALL">Только малые</option>
+                <option value="LARGE">Только большие</option>
+              </select>
+            </label>
+          </div>
+
           <div class="hero-tier-toolbar">
             <button id="tier-builder-reset" class="secondary-button" type="button">Сбросить</button>
             <button id="tier-builder-unassigned" class="download-button" type="button">Все в пул</button>
@@ -106,6 +117,9 @@
     </main>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pica@9.0.1/dist/pica.min.js"></script>
+  <script src="./shared.js"></script>
   <script src="./tier-data.js"></script>
   <script src="./accessories-data.js"></script>
   <script src="./hero-tier-builder.js"></script>

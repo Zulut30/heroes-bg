@@ -3,6 +3,7 @@
   const sourceSelect = document.getElementById("builder-source");
   const raceSelect = document.getElementById("builder-race");
   const levelSelect = document.getElementById("builder-level");
+  const accessorySizeSelect = document.getElementById("builder-accessory-size");
   const clearButton = document.getElementById("builder-clear");
   const exportPngButton = document.getElementById("builder-export-png");
   const exportWebpButton = document.getElementById("builder-export-webp");
@@ -49,7 +50,10 @@
     source: "ALL",
     race: "ALL",
     level: "ALL",
-    activeId: null
+    accessorySize: "ALL",
+    activeId: null,
+    draggingLibrary: false,
+    draggingPlaced: false
   };
 
   function getCardArtUrl(card, size = "512x") {
@@ -159,7 +163,22 @@
         ? true
         : String(card.techLevel || "") === state.level;
 
-    return searchOk && sourceOk && raceOk && levelOk;
+    const accessoryOk = state.accessorySize === "ALL"
+      ? true
+      : card.source !== "ACCESSORY"
+        ? true
+        : card.accessorySize === state.accessorySize;
+
+    return searchOk && sourceOk && raceOk && levelOk && accessoryOk;
+  }
+
+  function syncAccessorySizeFilter() {
+    const enabled = state.source === "ACCESSORY";
+    accessorySizeSelect.disabled = !enabled;
+    if (!enabled && accessorySizeSelect.value !== "ALL") {
+      accessorySizeSelect.value = "ALL";
+      state.accessorySize = "ALL";
+    }
   }
 
   function getLibraryMeta(card) {
@@ -226,8 +245,13 @@
       `;
 
       button.addEventListener("dragstart", (event) => {
+        state.draggingLibrary = true;
         event.dataTransfer.effectAllowed = "copy";
         event.dataTransfer.setData("text/plain", String(card.id));
+      });
+
+      button.addEventListener("dragend", () => {
+        state.draggingLibrary = false;
       });
 
       button.addEventListener("click", () => addCardToBoard(card));
@@ -324,6 +348,7 @@
         }
 
         state.activeId = card.uid;
+        state.draggingPlaced = true;
         const boardRect = boardEl.getBoundingClientRect();
         tile.classList.add("is-dragging");
 
@@ -338,6 +363,7 @@
           window.removeEventListener("pointermove", move);
           window.removeEventListener("pointerup", release);
           tile.classList.remove("is-dragging");
+          state.draggingPlaced = false;
           movePlacedCardToSlot(card.uid, getNearestSlot(releaseEvent.clientX, releaseEvent.clientY));
         };
 
@@ -488,6 +514,7 @@
       const accessories = [...(accessoriesPayload.small || []), ...(accessoriesPayload.large || [])].map(normalizeAccessoryCard);
 
       state.cards = [...heroes, ...minions, ...spells, ...accessories];
+      syncAccessorySizeFilter();
       updateLibrary();
       renderBoard();
     } catch (error) {
@@ -523,6 +550,7 @@
 
   sourceSelect.addEventListener("change", (event) => {
     state.source = event.target.value;
+    syncAccessorySizeFilter();
     updateLibrary();
   });
 
@@ -536,6 +564,11 @@
     updateLibrary();
   });
 
+  accessorySizeSelect.addEventListener("change", (event) => {
+    state.accessorySize = event.target.value;
+    updateLibrary();
+  });
+
   clearButton.addEventListener("click", () => {
     state.placed = [];
     state.activeId = null;
@@ -544,6 +577,12 @@
 
   exportPngButton.addEventListener("click", () => exportBoard("png"));
   exportWebpButton.addEventListener("click", () => exportBoard("webp"));
+
+  document.addEventListener("wheel", (event) => {
+    if (state.draggingLibrary || state.draggingPlaced) {
+      window.scrollBy({ top: event.deltaY, left: event.deltaX, behavior: "auto" });
+    }
+  }, { passive: true });
 
   bootstrap();
 })();

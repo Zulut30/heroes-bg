@@ -33,6 +33,7 @@
     source: "ALL",
     race: "ALL",
     level: "ALL",
+    accessorySize: "ALL",
     draggingCardId: null
   };
 
@@ -42,6 +43,7 @@
   const sourceSelect = document.getElementById("tier-builder-source");
   const raceSelect = document.getElementById("tier-builder-race");
   const levelSelect = document.getElementById("tier-builder-level");
+  const accessorySizeSelect = document.getElementById("tier-builder-accessory-size");
   const resetButton = document.getElementById("tier-builder-reset");
   const unassignedButton = document.getElementById("tier-builder-unassigned");
   const summary = document.getElementById("tier-builder-summary");
@@ -180,7 +182,22 @@
         ? true
         : String(card.techLevel || "") === state.level;
 
-    return searchOk && sourceOk && raceOk && levelOk;
+    const accessoryOk = state.accessorySize === "ALL"
+      ? true
+      : card.source !== "ACCESSORY"
+        ? true
+        : card.accessorySize === state.accessorySize;
+
+    return searchOk && sourceOk && raceOk && levelOk && accessoryOk;
+  }
+
+  function syncAccessorySizeFilter() {
+    const enabled = state.source === "ACCESSORY";
+    accessorySizeSelect.disabled = !enabled;
+    if (!enabled && accessorySizeSelect.value !== "ALL") {
+      accessorySizeSelect.value = "ALL";
+      state.accessorySize = "ALL";
+    }
   }
 
   function getSourceLabel(card) {
@@ -256,13 +273,10 @@
     element.className = "tier-builder-card";
     element.draggable = true;
     element.dataset.cardId = cardId;
+    element.title = `${card.name} — ${getSourceLabel(card)} — ${getCardMeta(card)}`;
     element.innerHTML = `
       <div class="tier-builder-card-media">
         <img src="${getCardArtUrl(card, "256x")}" alt="${card.name}" loading="lazy" decoding="async">
-      </div>
-      <div class="tier-builder-card-copy">
-        <strong>${card.name}</strong>
-        <span class="tier-builder-card-meta">${getSourceLabel(card)} • ${getCardMeta(card)}</span>
       </div>
       <div class="tier-builder-card-actions">
         <button class="tier-builder-card-button" type="button" data-action="prev" aria-label="Сдвинуть раньше">←</button>
@@ -328,6 +342,38 @@
     return zone;
   }
 
+  async function exportTier(tier) {
+    const cards = state.placements[tier].map((id) => state.cardsById.get(id)).filter((card) => card && matchesFilters(card));
+    if (!cards.length) {
+      return;
+    }
+
+    await window.Shared.exportCardSheet(
+      cards.map((card) => ({
+        exportImage: getCardArtUrl(card, "512x"),
+        image: getCardArtUrl(card, "512x")
+      })),
+      {
+        fileBaseName: `tier-${tier.toLowerCase()}-${state.source.toLowerCase()}`,
+        columns: 6,
+        gap: 12,
+        padding: 12,
+        cardWidth: 320,
+        artHeight: 448,
+        renderScale: 1.3,
+        showHeader: false,
+        showText: false,
+        showMeta: false,
+        showCardBackground: false,
+        background: "transparent",
+        maxWidthOrHeight: 3200,
+        maxSizeMB: 1.95,
+        initialQuality: 0.96,
+        outputQuality: 0.98
+      }
+    );
+  }
+
   function renderPool() {
     poolRoot.innerHTML = "";
 
@@ -363,6 +409,7 @@
               <p class="tier-builder-count">${state.placements[tier].length} карт</p>
             </div>
           </div>
+          <button class="secondary-button tier-builder-export" type="button">Скачать тир</button>
         </div>
       `;
 
@@ -381,6 +428,7 @@
       }
 
       row.append(zone);
+      row.querySelector(".tier-builder-export").addEventListener("click", () => exportTier(tier));
       rowsRoot.append(row);
     });
   }
@@ -427,6 +475,7 @@
       state.cards = [...minions, ...spells, ...accessories, ...heroes];
       state.cardsById = new Map(state.cards.map((card) => [card.id, card]));
       state.placements = createInitialPlacements(state.cards);
+      syncAccessorySizeFilter();
       render();
     } catch (error) {
       console.error(error);
@@ -441,6 +490,7 @@
 
   sourceSelect.addEventListener("change", (event) => {
     state.source = event.target.value;
+    syncAccessorySizeFilter();
     render();
   });
 
@@ -454,15 +504,23 @@
     render();
   });
 
+  accessorySizeSelect.addEventListener("change", (event) => {
+    state.accessorySize = event.target.value;
+    render();
+  });
+
   resetButton.addEventListener("click", () => {
     state.search = "";
     state.source = "ALL";
     state.race = "ALL";
     state.level = "ALL";
+    state.accessorySize = "ALL";
     searchInput.value = "";
     sourceSelect.value = "ALL";
     raceSelect.value = "ALL";
     levelSelect.value = "ALL";
+    accessorySizeSelect.value = "ALL";
+    syncAccessorySizeFilter();
     render();
   });
 
@@ -470,6 +528,12 @@
     state.placements = createInitialPlacements(state.cards);
     render();
   });
+
+  document.addEventListener("wheel", (event) => {
+    if (state.draggingCardId) {
+      window.scrollBy({ top: event.deltaY, left: event.deltaX, behavior: "auto" });
+    }
+  }, { passive: true });
 
   bootstrap();
 })();
