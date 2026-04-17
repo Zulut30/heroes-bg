@@ -369,7 +369,9 @@
 
   function matchesFilters(card) {
     const searchOk = !state.search || normalize(getCardSearchText(card)).includes(normalize(state.search));
-    const sourceOk = state.source === "ALL" || card.source === state.source;
+    const sourceOk = state.source === "ALL"
+      ? card.source !== "HERO"
+      : card.source === state.source;
 
     const raceOk = state.race === "ALL"
       ? true
