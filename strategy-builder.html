@@ -80,28 +80,6 @@
           <div id="builder-background-picker" class="background-picker" aria-label="Фон полотна"></div>
         </div>
 
-        <div class="annotation-toolbar" aria-label="Аннотации">
-          <span class="annotation-toolbar-label">Аннотации</span>
-          <button class="annotation-tool" data-ann-tool="arrow" type="button" aria-pressed="false">
-            <span class="annotation-tool-glyph">→</span>
-            <span>Стрелка</span>
-          </button>
-          <button class="annotation-tool" data-ann-tool="plus" type="button" aria-pressed="false">
-            <span class="annotation-tool-glyph">+</span>
-            <span>Плюс</span>
-          </button>
-          <button class="annotation-tool" data-ann-tool="strike" type="button" aria-pressed="false">
-            <span class="annotation-tool-glyph">⊘</span>
-            <span>Зачеркнуть</span>
-          </button>
-          <button class="annotation-tool" data-ann-tool="erase" type="button" aria-pressed="false">
-            <span class="annotation-tool-glyph">×</span>
-            <span>Удалить</span>
-          </button>
-          <button id="builder-clear-annotations" class="annotation-tool annotation-tool-clear" type="button">Очистить все</button>
-          <span id="builder-annotation-hint" class="annotation-hint"></span>
-        </div>
-
         <div class="quick-slots-panel" aria-label="Быстрые слоты">
           <div class="quick-slots-header">
             <span class="eyebrow">Быстрые слоты</span>
@@ -110,11 +88,35 @@
           <div id="quick-slots" class="quick-slots-list"></div>
         </div>
 
-        <div id="strategy-board" class="strategy-board strategy-board-compact">
-          <div class="strategy-board-grid" aria-hidden="true"></div>
-          <div class="strategy-board-hint">
-            Перетащи сюда героев, существ и заклинания из библиотеки слева
+        <div class="board-with-annotations">
+          <div id="strategy-board" class="strategy-board strategy-board-compact">
+            <div class="strategy-board-grid" aria-hidden="true"></div>
+            <div class="strategy-board-hint">
+              Перетащи сюда героев, существ и заклинания из библиотеки слева
+            </div>
           </div>
+
+          <aside class="annotation-toolbar annotation-toolbar-vertical" aria-label="Аннотации">
+            <span class="annotation-toolbar-label">Аннотации</span>
+            <button class="annotation-tool" data-ann-tool="arrow" type="button" aria-pressed="false">
+              <span class="annotation-tool-glyph">→</span>
+              <span>Стрелка</span>
+            </button>
+            <button class="annotation-tool" data-ann-tool="plus" type="button" aria-pressed="false">
+              <span class="annotation-tool-glyph">+</span>
+              <span>Плюс</span>
+            </button>
+            <button class="annotation-tool" data-ann-tool="strike" type="button" aria-pressed="false">
+              <span class="annotation-tool-glyph">⊘</span>
+              <span>Зачеркнуть</span>
+            </button>
+            <button class="annotation-tool" data-ann-tool="erase" type="button" aria-pressed="false">
+              <span class="annotation-tool-glyph">×</span>
+              <span>Удалить</span>
+            </button>
+            <button id="builder-clear-annotations" class="annotation-tool annotation-tool-clear" type="button">Очистить все</button>
+            <span id="builder-annotation-hint" class="annotation-hint"></span>
+          </aside>
         </div>
       </section>
     </main>

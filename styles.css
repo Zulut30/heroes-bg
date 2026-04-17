@@ -1208,6 +1208,76 @@ h1 {
   background: rgba(36, 12, 12, 0.55);
 }
 
+.board-with-annotations {
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+  margin-top: 16px;
+}
+
+.board-with-annotations > .strategy-board {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-top: 0;
+}
+
+.annotation-toolbar-vertical {
+  flex: 0 0 188px;
+  margin-top: 0;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  align-self: flex-start;
+  gap: 8px;
+  position: sticky;
+  top: 16px;
+}
+
+.annotation-toolbar-vertical .annotation-toolbar-label {
+  margin: 0 0 4px;
+  text-align: center;
+}
+
+.annotation-toolbar-vertical .annotation-tool {
+  justify-content: flex-start;
+  width: 100%;
+  padding: 9px 14px;
+}
+
+.annotation-toolbar-vertical .annotation-tool-clear {
+  margin-left: 0;
+  margin-top: 6px;
+  text-align: center;
+  justify-content: center;
+}
+
+.annotation-toolbar-vertical .annotation-hint {
+  flex-basis: auto;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  margin-top: 4px;
+}
+
+@media (max-width: 1280px) {
+  .board-with-annotations {
+    flex-direction: column;
+  }
+  .annotation-toolbar-vertical {
+    position: static;
+    flex: 0 0 auto;
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .annotation-toolbar-vertical .annotation-tool {
+    width: auto;
+  }
+  .annotation-toolbar-vertical .annotation-tool-clear {
+    margin-left: auto;
+  }
+}
+
 .annotation-toolbar-label {
   font-weight: 700;
   color: #ffb8b8;
