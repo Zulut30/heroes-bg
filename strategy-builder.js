@@ -1094,7 +1094,17 @@
         const startY = event.clientY;
         const DRAG_THRESHOLD = 5;
         let dragging = false;
-        const boardRect = boardEl.getBoundingClientRect();
+        let pendingEvent = null;
+        let rafId = null;
+
+        const applyMove = () => {
+          rafId = null;
+          if (!pendingEvent) return;
+          const dx = pendingEvent.clientX - startX;
+          const dy = pendingEvent.clientY - startY;
+          tile.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+          pendingEvent = null;
+        };
 
         const move = (moveEvent) => {
           const dx = moveEvent.clientX - startX;
@@ -1108,17 +1118,22 @@
             state.draggingPlaced = true;
             tile.classList.add("is-dragging");
           }
-          const localX = moveEvent.clientX - boardRect.left;
-          const localY = moveEvent.clientY - boardRect.top;
-          tile.style.left = `${localX}px`;
-          tile.style.top = `${localY}px`;
+          pendingEvent = moveEvent;
+          if (rafId === null) {
+            rafId = requestAnimationFrame(applyMove);
+          }
         };
 
         const release = (releaseEvent) => {
           window.removeEventListener("pointermove", move);
           window.removeEventListener("pointerup", release);
+          if (rafId !== null) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
+          }
           if (dragging) {
             tile.classList.remove("is-dragging");
+            tile.style.transform = "";
             state.draggingPlaced = false;
             movePlacedCardToSlot(card.uid, getNearestSlot(releaseEvent.clientX, releaseEvent.clientY));
           } else {
@@ -1635,9 +1650,24 @@ function normalizeHeroCard(hero, tier) {
     });
   }
 
+  let resizeRaf = null;
   window.addEventListener("resize", () => {
-    if (state.annotations.length || state.pendingAnnotation) {
+    if (!state.annotations.length && !state.pendingAnnotation) return;
+    if (resizeRaf !== null) return;
+    resizeRaf = requestAnimationFrame(() => {
+      resizeRaf = null;
       renderAnnotationOverlay();
+    });
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    if (state.annotationTool || state.pendingAnnotation) {
+      state.annotationTool = null;
+      state.pendingAnnotation = null;
+      applyAnnotationToolUi();
+      renderBoard();
+      event.preventDefault();
     }
   });
 

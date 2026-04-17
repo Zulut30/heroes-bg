@@ -622,6 +622,7 @@ h1 {
   border-radius: var(--radius-lg);
   background: var(--panel);
   box-shadow: var(--shadow);
+  contain: layout paint;
 }
 
 .builder-sidebar,
@@ -680,10 +681,18 @@ h1 {
   margin-top: 16px;
   padding-right: 6px;
   overflow: auto;
+  contain: layout paint;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .builder-library-dense {
   max-height: calc(100vh - 360px);
+}
+
+.tier-builder-pool {
+  contain: layout paint;
+  overscroll-behavior: contain;
 }
 
 .hero-tier-toolbar {
@@ -830,6 +839,7 @@ h1 {
   background: transparent;
   cursor: grab;
   transition: transform 0.2s ease;
+  contain: layout paint;
 }
 
 .tier-builder-card-media {
@@ -980,6 +990,10 @@ h1 {
   border-radius: 20px;
   background: linear-gradient(180deg, rgba(23, 34, 55, 0.96), rgba(8, 14, 25, 0.98));
   cursor: grab;
+  contain: layout paint;
+  content-visibility: auto;
+  contain-intrinsic-size: 120px;
+  transition: transform 0.15s ease;
 }
 
 .builder-card:hover {
@@ -1127,6 +1141,12 @@ h1 {
   cursor: grab;
   transform: translate(-50%, -50%);
   width: 15.3%;
+  contain: layout paint;
+  touch-action: none;
+}
+
+.placed-card.is-dragging {
+  will-change: transform;
 }
 
 .placed-card-art {
