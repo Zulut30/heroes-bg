@@ -839,7 +839,7 @@ h1 {
   background: transparent;
   cursor: grab;
   transition: transform 0.2s ease;
-  contain: layout paint;
+  contain: layout;
 }
 
 .tier-builder-card-media {
@@ -1141,7 +1141,7 @@ h1 {
   cursor: grab;
   transform: translate(-50%, -50%);
   width: 15.3%;
-  contain: layout paint;
+  contain: layout;
   touch-action: none;
 }
 
