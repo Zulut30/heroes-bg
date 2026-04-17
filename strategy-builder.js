@@ -725,6 +725,9 @@
       const hints = {
         arrow: "Кликни по первой карте, затем по второй — стрелка пойдёт от первой ко второй.",
         plus: "Кликни две карты — между ними встанет «+».",
+        equals: "Кликни две карты — между ними встанет знак «=».",
+        "double-arrow": "Кликни две карты — связь с двумя наконечниками.",
+        question: "Кликни по карте, чтобы поставить «?» (или снять).",
         strike: "Кликни по карте, чтобы перечеркнуть её крестом (или снять).",
         "label-prokrutka": "Кликни по карте — под ней появится надпись «Прокрутка».",
         "label-key": "Кликни по карте — под ней появится надпись «Ключевая».",
@@ -760,21 +763,25 @@
     "label-key": "Ключевая"
   };
 
+  const TWO_CARD_TOOLS = new Set(["arrow", "plus", "equals", "double-arrow"]);
+  const SINGLE_CARD_TOGGLE_TOOLS = new Set(["strike", "question"]);
+
   function handleAnnotationClick(cardUid) {
     const tool = state.annotationTool;
     if (!tool) return false;
-    if (tool === "strike") {
-      const existing = state.annotations.find((ann) => ann.type === "strike" && ann.cardUids[0] === cardUid);
+    if (SINGLE_CARD_TOGGLE_TOOLS.has(tool)) {
+      const existing = state.annotations.find((ann) => ann.type === tool && ann.cardUids[0] === cardUid);
       if (existing) {
         removeAnnotationById(existing.id);
       } else {
-        addAnnotation({ type: "strike", cardUids: [cardUid] });
+        addAnnotation({ type: tool, cardUids: [cardUid] });
       }
       return true;
     }
     if (tool === "erase") {
       const cardAnn = state.annotations.find((ann) => (
-        (ann.type === "strike" || ann.type === "label") && ann.cardUids[0] === cardUid
+        (ann.type === "strike" || ann.type === "question" || ann.type === "label")
+        && ann.cardUids[0] === cardUid
       ));
       if (cardAnn) {
         removeAnnotationById(cardAnn.id);
@@ -794,7 +801,7 @@
       }
       return true;
     }
-    if (tool === "arrow" || tool === "plus") {
+    if (TWO_CARD_TOOLS.has(tool)) {
       if (!state.pendingAnnotation) {
         state.pendingAnnotation = { uid: cardUid };
         renderBoard();
@@ -866,6 +873,36 @@
       node.setAttribute("data-ann-id", id);
       node.classList.add("strategy-annotation");
       annLayer.append(node);
+    };
+
+    const buildDoubleArrowPath = (x1, y1, x2, y2) => {
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      const ux = dx / len;
+      const uy = dy / len;
+      const px = -uy;
+      const py = ux;
+      const shaftWidth = strokeWidth * 0.9;
+      const headLen = Math.min(len * 0.28, cardWidthPx * 0.26);
+      const headWidth = shaftWidth * 2.4;
+      const leftBaseX = x1 + ux * headLen;
+      const leftBaseY = y1 + uy * headLen;
+      const rightBaseX = x2 - ux * headLen;
+      const rightBaseY = y2 - uy * headLen;
+      return [
+        `M ${x1} ${y1}`,
+        `L ${leftBaseX + px * headWidth} ${leftBaseY + py * headWidth}`,
+        `L ${leftBaseX + px * (shaftWidth / 2)} ${leftBaseY + py * (shaftWidth / 2)}`,
+        `L ${rightBaseX + px * (shaftWidth / 2)} ${rightBaseY + py * (shaftWidth / 2)}`,
+        `L ${rightBaseX + px * headWidth} ${rightBaseY + py * headWidth}`,
+        `L ${x2} ${y2}`,
+        `L ${rightBaseX - px * headWidth} ${rightBaseY - py * headWidth}`,
+        `L ${rightBaseX - px * (shaftWidth / 2)} ${rightBaseY - py * (shaftWidth / 2)}`,
+        `L ${leftBaseX - px * (shaftWidth / 2)} ${leftBaseY - py * (shaftWidth / 2)}`,
+        `L ${leftBaseX - px * headWidth} ${leftBaseY - py * headWidth}`,
+        "Z"
+      ].join(" ");
     };
 
     const buildArrowPath = (x1, y1, x2, y2) => {
@@ -988,6 +1025,18 @@
         appendAnnotation(group, ann.id);
         return;
       }
+      const makeBar = (x1, y1, x2, y2, width, color) => {
+        const l = document.createElementNS(SVG_NS, "line");
+        l.setAttribute("x1", x1);
+        l.setAttribute("y1", y1);
+        l.setAttribute("x2", x2);
+        l.setAttribute("y2", y2);
+        l.setAttribute("stroke", color);
+        l.setAttribute("stroke-width", String(width));
+        l.setAttribute("stroke-linecap", "round");
+        return l;
+      };
+
       if (ann.type === "plus") {
         const a = cardCenter(ann.cardUids[0]);
         const b = cardCenter(ann.cardUids[1]);
@@ -996,24 +1045,100 @@
         const my = (a.cy + b.cy) / 2;
         const arm = cardWidthPx * 0.12;
         const barThick = strokeWidth * 1.15;
-        const group = document.createElementNS(SVG_NS, "g");
-        const makeBar = (x1, y1, x2, y2, width, color) => {
-          const l = document.createElementNS(SVG_NS, "line");
-          l.setAttribute("x1", x1);
-          l.setAttribute("y1", y1);
-          l.setAttribute("x2", x2);
-          l.setAttribute("y2", y2);
-          l.setAttribute("stroke", color);
-          l.setAttribute("stroke-width", String(width));
-          l.setAttribute("stroke-linecap", "round");
-          return l;
-        };
         const haloThick = barThick + outlineExtra * 1.6;
+        const group = document.createElementNS(SVG_NS, "g");
         group.append(makeBar(mx - arm, my, mx + arm, my, haloThick, ANNOTATION_LIGHT));
         group.append(makeBar(mx, my - arm, mx, my + arm, haloThick, ANNOTATION_LIGHT));
         group.append(makeBar(mx - arm, my, mx + arm, my, barThick, ANNOTATION_COLOR));
         group.append(makeBar(mx, my - arm, mx, my + arm, barThick, ANNOTATION_COLOR));
         appendAnnotation(group, ann.id);
+        return;
+      }
+      if (ann.type === "equals") {
+        const a = cardCenter(ann.cardUids[0]);
+        const b = cardCenter(ann.cardUids[1]);
+        if (!a || !b) return;
+        const mx = (a.cx + b.cx) / 2;
+        const my = (a.cy + b.cy) / 2;
+        const arm = cardWidthPx * 0.13;
+        const gap = cardWidthPx * 0.08;
+        const barThick = strokeWidth * 1.1;
+        const haloThick = barThick + outlineExtra * 1.6;
+        const group = document.createElementNS(SVG_NS, "g");
+        group.append(makeBar(mx - arm, my - gap, mx + arm, my - gap, haloThick, ANNOTATION_LIGHT));
+        group.append(makeBar(mx - arm, my + gap, mx + arm, my + gap, haloThick, ANNOTATION_LIGHT));
+        group.append(makeBar(mx - arm, my - gap, mx + arm, my - gap, barThick, ANNOTATION_COLOR));
+        group.append(makeBar(mx - arm, my + gap, mx + arm, my + gap, barThick, ANNOTATION_COLOR));
+        appendAnnotation(group, ann.id);
+        return;
+      }
+      if (ann.type === "double-arrow") {
+        const a = cardCenter(ann.cardUids[0]);
+        const b = cardCenter(ann.cardUids[1]);
+        if (!a || !b) return;
+        const dx = b.cx - a.cx;
+        const dy = b.cy - a.cy;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        const shorten = Math.min(cardWidthPx * 0.55, len * 0.35);
+        const ux = dx / len;
+        const uy = dy / len;
+        const x1 = a.cx + ux * shorten;
+        const y1 = a.cy + uy * shorten;
+        const x2 = b.cx - ux * shorten;
+        const y2 = b.cy - uy * shorten;
+        const d = buildDoubleArrowPath(x1, y1, x2, y2);
+        const group = document.createElementNS(SVG_NS, "g");
+        const outline = document.createElementNS(SVG_NS, "path");
+        outline.setAttribute("d", d);
+        outline.setAttribute("fill", ANNOTATION_LIGHT);
+        outline.setAttribute("stroke", ANNOTATION_LIGHT);
+        outline.setAttribute("stroke-width", String(outlineExtra * 2));
+        outline.setAttribute("stroke-linejoin", "round");
+        const core = document.createElementNS(SVG_NS, "path");
+        core.setAttribute("d", d);
+        core.setAttribute("fill", ANNOTATION_COLOR);
+        core.setAttribute("stroke", ANNOTATION_DARK);
+        core.setAttribute("stroke-width", String(Math.max(1, outlineExtra * 0.4)));
+        core.setAttribute("stroke-linejoin", "round");
+        group.append(outline);
+        group.append(core);
+        appendAnnotation(group, ann.id);
+        return;
+      }
+      if (ann.type === "question") {
+        const center = cardCenter(ann.cardUids[0]);
+        if (!center) return;
+        const radius = cardWidthPx * 0.22;
+        const cy = center.cy - cardHeightPx / 2 + radius * 0.7;
+        const cx = center.cx;
+        const group = document.createElementNS(SVG_NS, "g");
+        const halo = document.createElementNS(SVG_NS, "circle");
+        halo.setAttribute("cx", cx);
+        halo.setAttribute("cy", cy);
+        halo.setAttribute("r", String(radius + outlineExtra));
+        halo.setAttribute("fill", ANNOTATION_LIGHT);
+        const body = document.createElementNS(SVG_NS, "circle");
+        body.setAttribute("cx", cx);
+        body.setAttribute("cy", cy);
+        body.setAttribute("r", String(radius));
+        body.setAttribute("fill", ANNOTATION_COLOR);
+        body.setAttribute("stroke", ANNOTATION_DARK);
+        body.setAttribute("stroke-width", String(Math.max(1, outlineExtra * 0.5)));
+        const glyph = document.createElementNS(SVG_NS, "text");
+        glyph.setAttribute("x", String(cx));
+        glyph.setAttribute("y", String(cy));
+        glyph.setAttribute("text-anchor", "middle");
+        glyph.setAttribute("dominant-baseline", "central");
+        glyph.setAttribute("fill", ANNOTATION_LIGHT);
+        glyph.setAttribute("font-family", '"BgDisplay", Georgia, serif');
+        glyph.setAttribute("font-weight", "700");
+        glyph.setAttribute("font-size", String(radius * 1.6));
+        glyph.textContent = "?";
+        group.append(halo);
+        group.append(body);
+        group.append(glyph);
+        appendAnnotation(group, ann.id);
+        return;
       }
     });
 
@@ -1195,6 +1320,35 @@
       ];
     };
 
+    const buildDoubleArrowPoints = (x1, y1, x2, y2) => {
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      const ux = dx / len;
+      const uy = dy / len;
+      const px = -uy;
+      const py = ux;
+      const shaftWidth = strokeWidth * 0.9;
+      const headLen = Math.min(len * 0.28, cardWidth * 0.26);
+      const headWidth = shaftWidth * 2.4;
+      const leftBaseX = x1 + ux * headLen;
+      const leftBaseY = y1 + uy * headLen;
+      const rightBaseX = x2 - ux * headLen;
+      const rightBaseY = y2 - uy * headLen;
+      return [
+        [x1, y1],
+        [leftBaseX + px * headWidth, leftBaseY + py * headWidth],
+        [leftBaseX + px * (shaftWidth / 2), leftBaseY + py * (shaftWidth / 2)],
+        [rightBaseX + px * (shaftWidth / 2), rightBaseY + py * (shaftWidth / 2)],
+        [rightBaseX + px * headWidth, rightBaseY + py * headWidth],
+        [x2, y2],
+        [rightBaseX - px * headWidth, rightBaseY - py * headWidth],
+        [rightBaseX - px * (shaftWidth / 2), rightBaseY - py * (shaftWidth / 2)],
+        [leftBaseX - px * (shaftWidth / 2), leftBaseY - py * (shaftWidth / 2)],
+        [leftBaseX - px * headWidth, leftBaseY - py * headWidth]
+      ];
+    };
+
     state.annotations.forEach((ann) => {
       ctx.save();
       ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
@@ -1300,6 +1454,94 @@
         ctx.shadowColor = "transparent";
         drawPlus(ANNOTATION_COLOR, barThick);
         ctx.restore();
+        return;
+      }
+
+      if (ann.type === "equals") {
+        const a = cardRects.get(ann.cardUids[0]);
+        const b = cardRects.get(ann.cardUids[1]);
+        if (!a || !b) { ctx.restore(); return; }
+        const mx = (a.cx + b.cx) / 2;
+        const my = (a.cy + b.cy) / 2;
+        const arm = cardWidth * 0.13;
+        const gap = cardWidth * 0.08;
+        const barThick = strokeWidth * 1.1;
+        const haloThick = barThick + outlineExtra * 1.6;
+        const drawEquals = (color, w) => {
+          ctx.strokeStyle = color;
+          ctx.lineWidth = w;
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.moveTo(mx - arm, my - gap);
+          ctx.lineTo(mx + arm, my - gap);
+          ctx.moveTo(mx - arm, my + gap);
+          ctx.lineTo(mx + arm, my + gap);
+          ctx.stroke();
+        };
+        drawEquals(ANNOTATION_LIGHT, haloThick);
+        ctx.shadowColor = "transparent";
+        drawEquals(ANNOTATION_COLOR, barThick);
+        ctx.restore();
+        return;
+      }
+
+      if (ann.type === "double-arrow") {
+        const a = cardRects.get(ann.cardUids[0]);
+        const b = cardRects.get(ann.cardUids[1]);
+        if (!a || !b) { ctx.restore(); return; }
+        const dx = b.cx - a.cx;
+        const dy = b.cy - a.cy;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        const ux = dx / len;
+        const uy = dy / len;
+        const shorten = Math.min(cardWidth * 0.55, len * 0.35);
+        const x1 = a.cx + ux * shorten;
+        const y1 = a.cy + uy * shorten;
+        const x2 = b.cx - ux * shorten;
+        const y2 = b.cy - uy * shorten;
+        const points = buildDoubleArrowPoints(x1, y1, x2, y2);
+        ctx.fillStyle = ANNOTATION_LIGHT;
+        ctx.strokeStyle = ANNOTATION_LIGHT;
+        ctx.lineWidth = outlineExtra * 2;
+        tracePath(points);
+        ctx.fill();
+        ctx.stroke();
+        ctx.shadowColor = "transparent";
+        ctx.fillStyle = ANNOTATION_COLOR;
+        ctx.strokeStyle = ANNOTATION_DARK;
+        ctx.lineWidth = Math.max(1, outlineExtra * 0.4);
+        tracePath(points);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+        return;
+      }
+
+      if (ann.type === "question") {
+        const rect = cardRects.get(ann.cardUids[0]);
+        if (!rect) { ctx.restore(); return; }
+        const radius = cardWidth * 0.22;
+        const cx = rect.cx;
+        const cy = rect.y + radius * 0.7;
+        ctx.fillStyle = ANNOTATION_LIGHT;
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius + outlineExtra, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowColor = "transparent";
+        ctx.fillStyle = ANNOTATION_COLOR;
+        ctx.strokeStyle = ANNOTATION_DARK;
+        ctx.lineWidth = Math.max(1, outlineExtra * 0.5);
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = ANNOTATION_LIGHT;
+        ctx.font = `700 ${radius * 1.6}px "BgDisplay", Georgia, serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("?", cx, cy + radius * 0.05);
+        ctx.restore();
+        return;
       }
     });
   }
