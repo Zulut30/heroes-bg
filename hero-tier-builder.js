@@ -240,9 +240,7 @@
         ? true
         : card.source !== "MINION"
           ? false
-          : state.race === "NONE"
-            ? !(card.races && card.races.length)
-            : (card.races || []).includes(state.race);
+          : ((card.races && card.races.length) ? card.races : ["NONE"]).includes(state.race);
 
     const levelOk = state.level === "ALL"
       ? true
