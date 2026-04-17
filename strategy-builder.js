@@ -12,6 +12,12 @@
   const exportWebpButton = document.getElementById("builder-export-webp");
   const toggleGridButton = document.getElementById("builder-toggle-grid");
   const backgroundPickerEl = document.getElementById("builder-background-picker");
+  const annotationToolButtons = document.querySelectorAll(".annotation-tool[data-ann-tool]");
+  const clearAnnotationsButton = document.getElementById("builder-clear-annotations");
+  const annotationHintEl = document.getElementById("builder-annotation-hint");
+  const ANNOTATION_COLOR = "#ff2e2e";
+  const ANNOTATION_STROKE_RATIO = 0.045;
+  const SVG_NS = "http://www.w3.org/2000/svg";
   const quickSlotsEl = document.getElementById("quick-slots");
   const statusEl = document.getElementById("builder-status");
   const libraryEl = document.getElementById("builder-library");
@@ -67,7 +73,10 @@
     draggingPlaced: false,
     showGrid: false,
     backgroundMode: loadBackgroundMode(),
-    quickSlots: loadQuickSlots()
+    quickSlots: loadQuickSlots(),
+    annotations: [],
+    annotationTool: null,
+    pendingAnnotation: null
   };
 
   function loadQuickSlots() {
@@ -622,6 +631,11 @@
       state.activeId = state.placed[0]?.uid || null;
     }
 
+    state.annotations = state.annotations.filter((ann) => !ann.cardUids.includes(uid));
+    if (state.pendingAnnotation && state.pendingAnnotation.uid === uid) {
+      state.pendingAnnotation = null;
+    }
+
     renderBoard();
   }
 
@@ -686,6 +700,240 @@
     renderBoard();
   }
 
+  function setAnnotationTool(tool) {
+    if (state.annotationTool === tool) {
+      state.annotationTool = null;
+    } else {
+      state.annotationTool = tool;
+    }
+    state.pendingAnnotation = null;
+    applyAnnotationToolUi();
+  }
+
+  function applyAnnotationToolUi() {
+    boardEl.classList.toggle("is-annotating", Boolean(state.annotationTool));
+    boardEl.dataset.annotationTool = state.annotationTool || "";
+    annotationToolButtons.forEach((button) => {
+      const active = button.dataset.annTool === state.annotationTool;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+    if (annotationHintEl) {
+      const hints = {
+        arrow: "Кликни по первой карте, затем по второй — стрелка пойдёт от первой ко второй.",
+        plus: "Кликни две карты — между ними встанет «+».",
+        strike: "Кликни по карте, чтобы зачеркнуть её (или снять зачёркивание).",
+        erase: "Кликни по аннотации или зачёркнутой карте, чтобы удалить."
+      };
+      annotationHintEl.textContent = state.annotationTool ? hints[state.annotationTool] || "" : "";
+    }
+  }
+
+  function addAnnotation(entry) {
+    state.annotations.push({ id: crypto.randomUUID(), ...entry });
+    renderBoard();
+  }
+
+  function removeAnnotationById(id) {
+    const before = state.annotations.length;
+    state.annotations = state.annotations.filter((ann) => ann.id !== id);
+    if (state.annotations.length !== before) {
+      renderBoard();
+    }
+  }
+
+  function removeStrikeForCard(uid) {
+    const before = state.annotations.length;
+    state.annotations = state.annotations.filter((ann) => !(ann.type === "strike" && ann.cardUids[0] === uid));
+    if (state.annotations.length !== before) {
+      renderBoard();
+    }
+  }
+
+  function handleAnnotationClick(cardUid) {
+    const tool = state.annotationTool;
+    if (!tool) return false;
+    if (tool === "strike") {
+      const existing = state.annotations.find((ann) => ann.type === "strike" && ann.cardUids[0] === cardUid);
+      if (existing) {
+        removeAnnotationById(existing.id);
+      } else {
+        addAnnotation({ type: "strike", cardUids: [cardUid] });
+      }
+      return true;
+    }
+    if (tool === "erase") {
+      removeStrikeForCard(cardUid);
+      return true;
+    }
+    if (tool === "arrow" || tool === "plus") {
+      if (!state.pendingAnnotation) {
+        state.pendingAnnotation = { uid: cardUid };
+        renderBoard();
+        return true;
+      }
+      if (state.pendingAnnotation.uid === cardUid) {
+        state.pendingAnnotation = null;
+        renderBoard();
+        return true;
+      }
+      const first = state.pendingAnnotation.uid;
+      state.pendingAnnotation = null;
+      addAnnotation({ type: tool, cardUids: [first, cardUid] });
+      return true;
+    }
+    return false;
+  }
+
+  function cardRectForUid(uid, rowMap, entriesByUid) {
+    const card = state.placed.find((c) => c.uid === uid);
+    if (!card) return null;
+    const slotPosition = getSlotPosition(card.slot);
+    return { cx: slotPosition.x, cy: slotPosition.y };
+  }
+
+  function renderAnnotationOverlay() {
+    const existing = boardEl.querySelector(".strategy-board-annotations");
+    if (existing) existing.remove();
+    if (!state.annotations.length && !state.pendingAnnotation) return;
+
+    const rect = boardEl.getBoundingClientRect();
+    const W = rect.width || 1;
+    const H = rect.height || 1;
+    if (!W || !H) return;
+
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("class", "strategy-board-annotations");
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    svg.setAttribute("width", String(W));
+    svg.setAttribute("height", String(H));
+    svg.setAttribute("preserveAspectRatio", "none");
+
+    const defs = document.createElementNS(SVG_NS, "defs");
+    defs.innerHTML = `
+      <marker id="board-arrow-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 Z" fill="${ANNOTATION_COLOR}"/>
+      </marker>
+    `;
+    svg.append(defs);
+
+    const cardWidthPx = W * 0.142;
+    const cardHeightPx = cardWidthPx * 1.4;
+    const strokeWidth = Math.max(4, cardWidthPx * ANNOTATION_STROKE_RATIO);
+
+    const cardCenter = (uid) => {
+      const card = state.placed.find((c) => c.uid === uid);
+      if (!card) return null;
+      const pos = getSlotPosition(card.slot);
+      return { cx: pos.x * W, cy: pos.y * H };
+    };
+
+    state.annotations.forEach((ann) => {
+      if (ann.type === "strike") {
+        const center = cardCenter(ann.cardUids[0]);
+        if (!center) return;
+        const hx = cardWidthPx / 2;
+        const hy = cardHeightPx / 2;
+        const line = document.createElementNS(SVG_NS, "line");
+        line.setAttribute("x1", center.cx - hx);
+        line.setAttribute("y1", center.cy - hy);
+        line.setAttribute("x2", center.cx + hx);
+        line.setAttribute("y2", center.cy + hy);
+        line.setAttribute("stroke", ANNOTATION_COLOR);
+        line.setAttribute("stroke-width", String(strokeWidth * 1.35));
+        line.setAttribute("stroke-linecap", "round");
+        line.setAttribute("data-ann-id", ann.id);
+        line.classList.add("strategy-annotation");
+        svg.append(line);
+        return;
+      }
+      if (ann.type === "arrow" || ann.type === "plus") {
+        const a = cardCenter(ann.cardUids[0]);
+        const b = cardCenter(ann.cardUids[1]);
+        if (!a || !b) return;
+        if (ann.type === "arrow") {
+          const dx = b.cx - a.cx;
+          const dy = b.cy - a.cy;
+          const len = Math.sqrt(dx * dx + dy * dy) || 1;
+          const shorten = Math.min(cardWidthPx * 0.55, len * 0.35);
+          const ux = dx / len;
+          const uy = dy / len;
+          const x1 = a.cx + ux * shorten;
+          const y1 = a.cy + uy * shorten;
+          const x2 = b.cx - ux * shorten;
+          const y2 = b.cy - uy * shorten;
+          const line = document.createElementNS(SVG_NS, "line");
+          line.setAttribute("x1", x1);
+          line.setAttribute("y1", y1);
+          line.setAttribute("x2", x2);
+          line.setAttribute("y2", y2);
+          line.setAttribute("stroke", ANNOTATION_COLOR);
+          line.setAttribute("stroke-width", String(strokeWidth));
+          line.setAttribute("stroke-linecap", "round");
+          line.setAttribute("marker-end", "url(#board-arrow-head)");
+          line.setAttribute("data-ann-id", ann.id);
+          line.classList.add("strategy-annotation");
+          svg.append(line);
+        } else {
+          const mx = (a.cx + b.cx) / 2;
+          const my = (a.cy + b.cy) / 2;
+          const size = cardWidthPx * 0.35;
+          const group = document.createElementNS(SVG_NS, "g");
+          group.setAttribute("data-ann-id", ann.id);
+          group.classList.add("strategy-annotation");
+          const circle = document.createElementNS(SVG_NS, "circle");
+          circle.setAttribute("cx", mx);
+          circle.setAttribute("cy", my);
+          circle.setAttribute("r", size * 0.9);
+          circle.setAttribute("fill", "rgba(12, 18, 30, 0.85)");
+          circle.setAttribute("stroke", ANNOTATION_COLOR);
+          circle.setAttribute("stroke-width", String(strokeWidth * 0.6));
+          group.append(circle);
+          const makeLine = (x1, y1, x2, y2) => {
+            const l = document.createElementNS(SVG_NS, "line");
+            l.setAttribute("x1", x1);
+            l.setAttribute("y1", y1);
+            l.setAttribute("x2", x2);
+            l.setAttribute("y2", y2);
+            l.setAttribute("stroke", ANNOTATION_COLOR);
+            l.setAttribute("stroke-width", String(strokeWidth));
+            l.setAttribute("stroke-linecap", "round");
+            return l;
+          };
+          group.append(makeLine(mx - size * 0.6, my, mx + size * 0.6, my));
+          group.append(makeLine(mx, my - size * 0.6, mx, my + size * 0.6));
+          svg.append(group);
+        }
+      }
+    });
+
+    if (state.pendingAnnotation) {
+      const c = cardCenter(state.pendingAnnotation.uid);
+      if (c) {
+        const pulse = document.createElementNS(SVG_NS, "circle");
+        pulse.setAttribute("cx", c.cx);
+        pulse.setAttribute("cy", c.cy);
+        pulse.setAttribute("r", String(cardWidthPx * 0.65));
+        pulse.setAttribute("fill", "none");
+        pulse.setAttribute("stroke", ANNOTATION_COLOR);
+        pulse.setAttribute("stroke-width", String(strokeWidth * 0.7));
+        pulse.setAttribute("stroke-dasharray", "10 6");
+        pulse.classList.add("strategy-annotation-pending");
+        svg.append(pulse);
+      }
+    }
+
+    svg.addEventListener("click", (event) => {
+      if (state.annotationTool !== "erase") return;
+      const target = event.target.closest("[data-ann-id]");
+      if (!target) return;
+      event.stopPropagation();
+      removeAnnotationById(target.dataset.annId);
+    });
+
+    boardEl.append(svg);
+  }
+
   function renderBoard() {
     boardEl.replaceChildren();
 
@@ -721,6 +969,12 @@
           return;
         }
         if (event.button !== undefined && event.button !== 0) {
+          return;
+        }
+        if (state.annotationTool) {
+          event.preventDefault();
+          event.stopPropagation();
+          handleAnnotationClick(card.uid);
           return;
         }
 
@@ -765,10 +1019,97 @@
       });
 
       tile.querySelector(".placed-card-remove").addEventListener("click", () => removePlacedCard(card.uid));
+      if (state.annotations.some((ann) => ann.type === "strike" && ann.cardUids[0] === card.uid)) {
+        tile.classList.add("is-struck");
+      }
+      if (state.pendingAnnotation && state.pendingAnnotation.uid === card.uid) {
+        tile.classList.add("is-ann-pending");
+      }
       boardEl.append(tile);
     });
 
+    renderAnnotationOverlay();
     syncCounter();
+  }
+
+  function drawAnnotationsOnCanvas(ctx, cardRects, cardWidth) {
+    if (!state.annotations.length) return;
+    const strokeWidth = Math.max(4, cardWidth * ANNOTATION_STROKE_RATIO);
+    ctx.save();
+    ctx.strokeStyle = ANNOTATION_COLOR;
+    ctx.fillStyle = ANNOTATION_COLOR;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    state.annotations.forEach((ann) => {
+      if (ann.type === "strike") {
+        const rect = cardRects.get(ann.cardUids[0]);
+        if (!rect) return;
+        ctx.lineWidth = strokeWidth * 1.35;
+        ctx.beginPath();
+        ctx.moveTo(rect.x, rect.y);
+        ctx.lineTo(rect.x + rect.w, rect.y + rect.h);
+        ctx.stroke();
+        return;
+      }
+      if (ann.type === "arrow" || ann.type === "plus") {
+        const a = cardRects.get(ann.cardUids[0]);
+        const b = cardRects.get(ann.cardUids[1]);
+        if (!a || !b) return;
+        if (ann.type === "arrow") {
+          const dx = b.cx - a.cx;
+          const dy = b.cy - a.cy;
+          const len = Math.sqrt(dx * dx + dy * dy) || 1;
+          const ux = dx / len;
+          const uy = dy / len;
+          const shorten = Math.min(cardWidth * 0.55, len * 0.35);
+          const x1 = a.cx + ux * shorten;
+          const y1 = a.cy + uy * shorten;
+          const x2 = b.cx - ux * shorten;
+          const y2 = b.cy - uy * shorten;
+          ctx.lineWidth = strokeWidth;
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+          const headLen = cardWidth * 0.22;
+          const headHalf = cardWidth * 0.12;
+          const hx = x2 - ux * headLen;
+          const hy = y2 - uy * headLen;
+          const px = -uy;
+          const py = ux;
+          ctx.beginPath();
+          ctx.moveTo(x2, y2);
+          ctx.lineTo(hx + px * headHalf, hy + py * headHalf);
+          ctx.lineTo(hx - px * headHalf, hy - py * headHalf);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          const mx = (a.cx + b.cx) / 2;
+          const my = (a.cy + b.cy) / 2;
+          const radius = cardWidth * 0.32;
+          ctx.save();
+          ctx.fillStyle = "rgba(12, 18, 30, 0.85)";
+          ctx.beginPath();
+          ctx.arc(mx, my, radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.lineWidth = strokeWidth * 0.6;
+          ctx.strokeStyle = ANNOTATION_COLOR;
+          ctx.stroke();
+          ctx.restore();
+          ctx.lineWidth = strokeWidth;
+          const arm = radius * 0.7;
+          ctx.beginPath();
+          ctx.moveTo(mx - arm, my);
+          ctx.lineTo(mx + arm, my);
+          ctx.moveTo(mx, my - arm);
+          ctx.lineTo(mx, my + arm);
+          ctx.stroke();
+        }
+      }
+    });
+
+    ctx.restore();
   }
 
   async function exportBoard(fileType) {
@@ -838,6 +1179,7 @@
       }
     }
 
+    const cardRects = new Map();
     for (const { card, image } of entries) {
       const originalRow = Math.floor(card.slot / BOARD_COLUMNS);
       const compactRow = rowMap.get(originalRow) ?? 0;
@@ -847,6 +1189,7 @@
       const x = EXPORT_SIDE_PADDING + column * (cardWidth + EXPORT_COLUMN_GAP);
       const rowTop = EXPORT_TOP_PADDING + compactRow * (maxCardHeight + EXPORT_ROW_GAP);
       const y = rowTop + (maxCardHeight - cardHeight) / 2;
+      cardRects.set(card.uid, { x, y, w: cardWidth, h: cardHeight, cx: x + cardWidth / 2, cy: y + cardHeight / 2 });
       if (card.highlighted) {
         ctx.save();
         ctx.shadowColor = "rgba(255, 222, 130, 1)";
@@ -862,6 +1205,8 @@
         ctx.drawImage(image, x, y, cardWidth, cardHeight);
       }
     }
+
+    drawAnnotationsOnCanvas(ctx, cardRects, cardWidth);
 
     const mimeType = fileType === "png" ? "image/png" : "image/webp";
     const extension = fileType === "png" ? "png" : "webp";
@@ -1073,8 +1418,30 @@ function normalizeHeroCard(hero, tier) {
   clearButton.addEventListener("click", () => {
     state.placed = [];
     state.activeId = null;
+    state.annotations = [];
+    state.pendingAnnotation = null;
     renderBoard();
   });
+
+  annotationToolButtons.forEach((button) => {
+    button.addEventListener("click", () => setAnnotationTool(button.dataset.annTool));
+  });
+
+  if (clearAnnotationsButton) {
+    clearAnnotationsButton.addEventListener("click", () => {
+      state.annotations = [];
+      state.pendingAnnotation = null;
+      renderBoard();
+    });
+  }
+
+  window.addEventListener("resize", () => {
+    if (state.annotations.length || state.pendingAnnotation) {
+      renderAnnotationOverlay();
+    }
+  });
+
+  applyAnnotationToolUi();
 
   exportPngButton.addEventListener("click", () => exportBoard("png"));
   exportWebpButton.addEventListener("click", () => exportBoard("webp"));

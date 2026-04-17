@@ -1196,6 +1196,124 @@ h1 {
   margin-left: auto;
 }
 
+.annotation-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 70, 70, 0.2);
+  border-radius: var(--radius-md);
+  background: rgba(36, 12, 12, 0.55);
+}
+
+.annotation-toolbar-label {
+  font-weight: 700;
+  color: #ffb8b8;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  margin-right: 4px;
+}
+
+.annotation-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(10, 18, 32, 0.7);
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.annotation-tool:hover {
+  color: var(--text);
+  border-color: rgba(255, 140, 140, 0.5);
+}
+
+.annotation-tool.is-active {
+  background: rgba(255, 50, 50, 0.22);
+  border-color: rgba(255, 120, 120, 0.8);
+  color: #ffe0e0;
+  box-shadow: 0 0 0 1px rgba(255, 120, 120, 0.35) inset;
+}
+
+.annotation-tool-glyph {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #ff7a7a;
+}
+
+.annotation-tool.is-active .annotation-tool-glyph {
+  color: #ffd0d0;
+}
+
+.annotation-tool-clear {
+  margin-left: auto;
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.08);
+  color: var(--muted-soft);
+}
+
+.annotation-hint {
+  flex-basis: 100%;
+  color: rgba(255, 200, 200, 0.78);
+  font-size: 0.82rem;
+  min-height: 1em;
+}
+
+.strategy-board.is-annotating .placed-card {
+  cursor: crosshair;
+}
+
+.strategy-board-annotations {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.strategy-board-annotations .strategy-annotation {
+  pointer-events: none;
+}
+
+.strategy-board[data-annotation-tool="erase"] .strategy-board-annotations {
+  pointer-events: none;
+}
+
+.strategy-board[data-annotation-tool="erase"] .strategy-board-annotations .strategy-annotation {
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.strategy-board[data-annotation-tool="erase"] .strategy-board-annotations g.strategy-annotation {
+  pointer-events: all;
+}
+
+.strategy-board[data-annotation-tool="erase"] .strategy-board-annotations .strategy-annotation:hover {
+  filter: drop-shadow(0 0 6px rgba(255, 60, 60, 0.9));
+}
+
+.strategy-annotation-pending {
+  animation: ann-pulse 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes ann-pulse {
+  from { opacity: 0.45; }
+  to { opacity: 1; }
+}
+
+.placed-card.is-ann-pending .placed-card-art {
+  filter: drop-shadow(0 0 0 2px rgba(255, 90, 90, 0.85)) drop-shadow(0 0 24px rgba(255, 80, 80, 0.75));
+}
+
 .background-picker {
   display: inline-flex;
   align-items: center;
