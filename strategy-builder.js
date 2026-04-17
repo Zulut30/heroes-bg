@@ -15,10 +15,11 @@
   const BOARD_ROWS = 3;
   const BOARD_SLOT_COUNT = BOARD_COLUMNS * BOARD_ROWS;
   const EXPORT_WIDTH = 2200;
-  const EXPORT_HEIGHT = 1260;
+  const EXPORT_HEIGHT_PER_ROW = 430;
   const SLOT_CARD_WIDTH = 0.148;
   const BOARD_INSET_X = 0.048;
-  const BOARD_INSET_Y = 0.12;
+  const BOARD_INSET_Y = 0.1;
+  const BOARD_ROW_GAP = 0.085;
 
   const raceNames = {
     NONE: "Без типа",
@@ -88,11 +89,11 @@
     const column = slot % BOARD_COLUMNS;
     const row = Math.floor(slot / BOARD_COLUMNS);
     const usableWidth = 1 - BOARD_INSET_X * 2;
-    const usableHeight = 1 - BOARD_INSET_Y * 2;
+    const usableHeight = 1 - BOARD_INSET_Y * 2 - BOARD_ROW_GAP * (BOARD_ROWS - 1);
 
     return {
       x: BOARD_INSET_X + usableWidth * ((column + 0.5) / BOARD_COLUMNS),
-      y: BOARD_INSET_Y + usableHeight * ((row + 0.5) / BOARD_ROWS)
+      y: BOARD_INSET_Y + (usableHeight / BOARD_ROWS) * (row + 0.5) + BOARD_ROW_GAP * row
     };
   }
 
@@ -339,19 +340,25 @@
       return;
     }
 
+    const occupiedRows = [...new Set(state.placed.map((card) => Math.floor(card.slot / BOARD_COLUMNS)))].sort((a, b) => a - b);
+    const rowMap = new Map(occupiedRows.map((row, index) => [row, index]));
+    const exportRows = Math.max(1, occupiedRows.length);
     const canvas = document.createElement("canvas");
     canvas.width = EXPORT_WIDTH;
-    canvas.height = EXPORT_HEIGHT;
+    canvas.height = EXPORT_HEIGHT_PER_ROW * exportRows;
     const ctx = canvas.getContext("2d");
 
     for (const card of state.placed) {
       const image = await window.Shared.loadImageFromSource(card.artUrl);
-      const slotPosition = getSlotPosition(card.slot);
+      const originalRow = Math.floor(card.slot / BOARD_COLUMNS);
+      const compactRow = rowMap.get(originalRow) ?? 0;
+      const compactSlot = compactRow * BOARD_COLUMNS + (card.slot % BOARD_COLUMNS);
+      const slotPosition = getSlotPosition(compactSlot);
       const cardWidth = EXPORT_WIDTH * SLOT_CARD_WIDTH;
       const imageRatio = image.width / image.height;
       const cardHeight = cardWidth / imageRatio;
       const x = EXPORT_WIDTH * slotPosition.x - cardWidth / 2;
-      const y = EXPORT_HEIGHT * slotPosition.y - cardHeight / 2;
+      const y = canvas.height * slotPosition.y - cardHeight / 2;
       ctx.drawImage(image, x, y, cardWidth, cardHeight);
     }
 

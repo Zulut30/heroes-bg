@@ -4,6 +4,7 @@
   const grid = document.getElementById("spells-grid");
   const searchInput = document.getElementById("spells-search");
   const filterSelect = document.getElementById("spells-filter");
+  const excludeDuosInput = document.getElementById("spells-exclude-duos");
   const resetButton = document.getElementById("spells-reset");
   const exportButton = document.getElementById("spells-export");
 
@@ -11,7 +12,8 @@
     cards: [],
     filtered: [],
     search: "",
-    tier: "ALL"
+    tier: "ALL",
+    excludeDuos: false
   };
 
   function normalize(value) {
@@ -27,7 +29,8 @@
   function matchesFilters(card) {
     const searchOk = !state.search || normalize(`${card.name} ${card.text} ${card.flavorText}`).includes(normalize(state.search));
     const tierOk = state.tier === "ALL" ? true : String(card.tier || "") === state.tier;
-    return searchOk && tierOk;
+    const duoOk = state.excludeDuos ? !card.battlegrounds?.duosOnly : true;
+    return searchOk && tierOk && duoOk;
   }
 
   function render() {
@@ -144,8 +147,15 @@
   resetButton.addEventListener("click", () => {
     state.search = "";
     state.tier = "ALL";
+    state.excludeDuos = false;
     searchInput.value = "";
     filterSelect.value = "ALL";
+    excludeDuosInput.checked = false;
+    applyFilters();
+  });
+
+  excludeDuosInput.addEventListener("change", (event) => {
+    state.excludeDuos = event.target.checked;
     applyFilters();
   });
 
