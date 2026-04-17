@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Заклинания Полей сражений из Blizzard API</title>
+  <title>Библиотека заклинаний</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
@@ -21,53 +21,53 @@
     </header>
 
     <main>
-      <section class="page-hero">
-        <p class="eyebrow">Blizzard Hearthstone API</p>
-        <h1>Заклинания Полей сражений</h1>
-        <p class="hero-copy">
-          Здесь показаны актуальные Tavern Spells из Blizzard API. Карточки собраны в том же визуальном стиле,
-          что и библиотека существ, чтобы их было проще просматривать и сравнивать.
-        </p>
-      </section>
-
-      <section class="api-panel">
+      <section class="library-controls-panel">
         <div class="controls-topline">
           <div>
-            <p class="eyebrow">Импорт</p>
-            <h2 class="panel-title">Фильтры заклинаний</h2>
+            <p class="eyebrow">Фильтры</p>
+            <h2 class="panel-title">Библиотека заклинаний</h2>
           </div>
-          <div id="spells-status" class="library-status">Загружаю данные из Blizzard API...</div>
+          <div class="controls-actions">
+            <button id="spells-reset" class="secondary-button" type="button">Сбросить</button>
+            <button id="spells-export" class="download-button" type="button">Скачать выборку</button>
+          </div>
         </div>
 
-        <div class="api-toolbar">
+        <div class="controls-grid">
           <label class="control-field">
             <span class="control-label">Поиск</span>
             <input id="spells-search" class="text-input" type="search" placeholder="Например, золото, таверна, божественный щит">
           </label>
 
           <label class="control-field">
-            <span class="control-label">Срез</span>
+            <span class="control-label">Таверна</span>
             <select id="spells-filter" class="select-input">
-              <option value="ALL">Все заклинания</option>
-              <option value="TIER_LOW">Таверна 1-2</option>
-              <option value="TIER_MID">Таверна 3-4</option>
-              <option value="TIER_HIGH">Таверна 5-7</option>
-              <option value="DUOS">Только дуо</option>
-              <option value="SOLOS">Только соло</option>
+              <option value="ALL">Все уровни</option>
+              <option value="1">Таверна 1</option>
+              <option value="2">Таверна 2</option>
+              <option value="3">Таверна 3</option>
+              <option value="4">Таверна 4</option>
+              <option value="5">Таверна 5</option>
+              <option value="6">Таверна 6</option>
+              <option value="7">Таверна 7</option>
             </select>
           </label>
         </div>
       </section>
 
-      <section class="api-panel">
+      <section class="library-results">
         <div class="results-bar">
+          <div id="spells-status" class="library-status">Загружаю библиотеку заклинаний...</div>
           <div id="spells-counter" class="library-status">0 карточек</div>
         </div>
-        <div id="spells-grid" class="spells-grid" aria-live="polite"></div>
+        <div id="spells-grid" class="library-card-grid library-card-grid-flat" aria-live="polite"></div>
       </section>
     </main>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pica@9.0.1/dist/pica.min.js"></script>
+  <script src="./shared.js"></script>
   <script src="./blizzard-spells.js"></script>
 </body>
 </html>

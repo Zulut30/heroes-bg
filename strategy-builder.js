@@ -14,11 +14,11 @@
   const BOARD_COLUMNS = 5;
   const BOARD_ROWS = 3;
   const BOARD_SLOT_COUNT = BOARD_COLUMNS * BOARD_ROWS;
-  const EXPORT_WIDTH = 2600;
-  const EXPORT_HEIGHT = 1480;
-  const SLOT_CARD_WIDTH = 0.152;
-  const BOARD_INSET_X = 0.04;
-  const BOARD_INSET_Y = 0.11;
+  const EXPORT_WIDTH = 2200;
+  const EXPORT_HEIGHT = 1260;
+  const SLOT_CARD_WIDTH = 0.148;
+  const BOARD_INSET_X = 0.048;
+  const BOARD_INSET_Y = 0.12;
 
   const raceNames = {
     NONE: "Без типа",
@@ -47,7 +47,7 @@
   };
 
   function getCardArtUrl(card, size = "512x") {
-    if (card?.source === "SPELL") {
+    if (card?.source === "SPELL" || card?.source === "HERO") {
       return card?.image || card?.artUrl || "";
     }
 
@@ -66,6 +66,13 @@
     const tmp = document.createElement("div");
     tmp.innerHTML = value || "";
     return (tmp.textContent || tmp.innerText || "").replace(/\s+/g, " ").trim();
+  }
+
+  function slugify(value) {
+    return String(value || "")
+      .toLowerCase()
+      .replace(/[^a-zа-яё0-9]+/gi, "-")
+      .replace(/(^-|-$)/g, "");
   }
 
   function setStatus(text) {
@@ -114,7 +121,9 @@
     return [
       card.name,
       card.text,
-      card.source === "SPELL" ? "заклинание tavern spell" : "существо minion",
+      card.source === "SPELL" ? "заклинание tavern spell" : "",
+      card.source === "MINION" ? "существо minion" : "",
+      card.source === "HERO" ? "герой hero" : "",
       (card.races || []).join(" "),
       `таверна ${card.techLevel || ""}`,
       `мана ${card.manaCost || ""}`
@@ -127,13 +136,17 @@
 
     const raceOk = state.race === "ALL"
       ? true
-      : card.source === "SPELL"
+      : card.source !== "MINION"
         ? false
         : state.race === "NONE"
           ? !(card.races && card.races.length)
           : (card.races || []).includes(state.race);
 
-    const levelOk = state.level === "ALL" ? true : String(card.techLevel || "") === state.level;
+    const levelOk = state.level === "ALL"
+      ? true
+      : card.source === "HERO"
+        ? true
+        : String(card.techLevel || "") === state.level;
 
     return searchOk && sourceOk && raceOk && levelOk;
   }
@@ -143,8 +156,22 @@
       return `Заклинание • Таверна ${card.techLevel || "?"} • Мана ${card.manaCost ?? 0}`;
     }
 
+    if (card.source === "HERO") {
+      return `Герой • ${card.heroTier || "Пул героев"}`;
+    }
+
     const raceLabel = raceNames[(card.races || [])[0]] || "Без типа";
     return `${raceLabel} • Таверна ${card.techLevel || "?"}`;
+  }
+
+  function getSourceLabel(card) {
+    if (card.source === "SPELL") {
+      return "Заклинание";
+    }
+    if (card.source === "HERO") {
+      return "Герой";
+    }
+    return "Существо";
   }
 
   function renderLibrary() {
@@ -155,14 +182,15 @@
       return;
     }
 
+    const heroCount = state.filtered.filter((card) => card.source === "HERO").length;
     const minionCount = state.filtered.filter((card) => card.source === "MINION").length;
     const spellCount = state.filtered.filter((card) => card.source === "SPELL").length;
-    setStatus(`Доступно ${state.filtered.length} карт: ${minionCount} существ и ${spellCount} заклинаний.`);
+    setStatus(`Доступно ${state.filtered.length} карт: ${heroCount} героев, ${minionCount} существ и ${spellCount} заклинаний.`);
 
     state.filtered.forEach((card) => {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = `builder-card${card.source === "SPELL" ? " is-spell" : ""}`;
+      button.className = `builder-card${card.source === "SPELL" ? " is-spell" : ""}${card.source === "HERO" ? " is-hero" : ""}`;
       button.draggable = true;
       button.innerHTML = `
         <div class="builder-card-media">
@@ -170,8 +198,8 @@
         </div>
         <div class="builder-card-copy">
           <div class="builder-card-topline">
-            <span class="builder-card-badge">${card.source === "SPELL" ? "Заклинание" : "Существо"}</span>
-            <span class="builder-card-tier">Т${card.techLevel || "?"}</span>
+            <span class="builder-card-badge">${getSourceLabel(card)}</span>
+            <span class="builder-card-tier">${card.source === "HERO" ? card.heroTier || "?" : `Т${card.techLevel || "?"}`}</span>
           </div>
           <strong>${card.name}</strong>
           <span>${getLibraryMeta(card)}</span>
@@ -254,7 +282,7 @@
 
     const hint = document.createElement("div");
     hint.className = "strategy-board-hint";
-    hint.textContent = "Перетащи карты в широкую сетку 5 × 3 и собери стратегию из существ и заклинаний.";
+    hint.textContent = "Полотно стало компактнее, а библиотека слева шире. Перетаскивай сюда героев, существ и заклинания.";
 
     if (!state.placed.length) {
       boardEl.append(hint);
@@ -345,6 +373,20 @@
     window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1200);
   }
 
+  function normalizeHeroCard(hero, tier) {
+    return {
+      id: `hero-${slugify(hero.name)}`,
+      name: hero.name,
+      text: "",
+      techLevel: 0,
+      races: [],
+      manaCost: 0,
+      source: "HERO",
+      image: hero.image,
+      heroTier: tier
+    };
+  }
+
   function normalizeMinionCard(card) {
     return {
       id: String(card.id),
@@ -371,6 +413,12 @@
     };
   }
 
+  function getHeroCards() {
+    return (window.tierData || []).flatMap((tierEntry) => (
+      (tierEntry.heroes || []).map((hero) => normalizeHeroCard(hero, tierEntry.tier))
+    ));
+  }
+
   async function bootstrap() {
     try {
       const [libraryResponse, spellsResponse] = await Promise.all([
@@ -389,15 +437,16 @@
 
       const libraryPayload = await libraryResponse.json();
       const spellsPayload = await spellsResponse.json();
+      const heroes = getHeroCards();
       const minions = Array.isArray(libraryPayload.cards) ? libraryPayload.cards.map(normalizeMinionCard) : [];
       const spells = Array.isArray(spellsPayload.cards) ? spellsPayload.cards.map(normalizeSpellCard) : [];
 
-      state.cards = [...minions, ...spells];
+      state.cards = [...heroes, ...minions, ...spells];
       updateLibrary();
       renderBoard();
     } catch (error) {
       console.error(error);
-      setStatus("Не удалось загрузить библиотеку карт и заклинаний.");
+      setStatus("Не удалось загрузить библиотеку героев, карт и заклинаний.");
     }
   }
 

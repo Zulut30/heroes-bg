@@ -4,12 +4,19 @@
   const grid = document.getElementById("spells-grid");
   const searchInput = document.getElementById("spells-search");
   const filterSelect = document.getElementById("spells-filter");
+  const resetButton = document.getElementById("spells-reset");
+  const exportButton = document.getElementById("spells-export");
 
   const state = {
     cards: [],
+    filtered: [],
     search: "",
-    filter: "ALL"
+    tier: "ALL"
   };
+
+  function normalize(value) {
+    return String(value || "").toLowerCase().trim();
+  }
 
   function stripHtml(value) {
     const tmp = document.createElement("div");
@@ -17,83 +24,95 @@
     return (tmp.textContent || tmp.innerText || "").replace(/\s+/g, " ").trim();
   }
 
-  function matchesFilter(card) {
-    switch (state.filter) {
-      case "TIER_LOW":
-        return Number(card.tier || 0) <= 2;
-      case "TIER_MID":
-        return Number(card.tier || 0) >= 3 && Number(card.tier || 0) <= 4;
-      case "TIER_HIGH":
-        return Number(card.tier || 0) >= 5;
-      case "DUOS":
-        return card.battlegrounds.duosOnly;
-      case "SOLOS":
-        return card.battlegrounds.solosOnly;
-      default:
-        return true;
-    }
-  }
-
-  function createMetaPills(card) {
-    const pills = [
-      `Таверна ${card.tier || "?"}`,
-      `Мана ${card.manaCost ?? 0}`
-    ];
-
-    if (card.battlegrounds.duosOnly) {
-      pills.push("Только дуо");
-    }
-    if (card.battlegrounds.solosOnly) {
-      pills.push("Только соло");
-    }
-
-    return pills;
+  function matchesFilters(card) {
+    const searchOk = !state.search || normalize(`${card.name} ${card.text} ${card.flavorText}`).includes(normalize(state.search));
+    const tierOk = state.tier === "ALL" ? true : String(card.tier || "") === state.tier;
+    return searchOk && tierOk;
   }
 
   function render() {
-    const cards = state.cards.filter((card) => {
-      const haystack = `${card.name} ${card.text} ${card.flavorText}`.toLowerCase();
-      return haystack.includes(state.search) && matchesFilter(card);
-    });
-
-    counter.textContent = `${cards.length} заклинаний показано`;
     grid.innerHTML = "";
+    counter.textContent = `${state.filtered.length} карточек`;
 
-    if (!cards.length) {
-      const empty = document.createElement("p");
-      empty.className = "tier-builder-empty";
-      empty.textContent = "По текущим фильтрам ничего не найдено.";
-      grid.append(empty);
+    if (!state.filtered.length) {
+      status.textContent = "По текущим фильтрам ничего не найдено.";
       return;
     }
 
-    cards.forEach((card) => {
-      const article = document.createElement("article");
-      article.className = "spell-card";
+    status.textContent = `Найдено ${state.filtered.length} заклинаний.`;
 
-      article.innerHTML = `
-        <div class="spell-card-media">
-          <img class="spell-art" src="${card.image}" alt="${card.name}" loading="lazy" decoding="async">
-        </div>
-        <div class="spell-card-body">
-          <div class="spell-meta">
-            ${createMetaPills(card).map((pill) => `<span class="meta-pill">${pill}</span>`).join("")}
-          </div>
-          <h3 class="spell-name">${card.name}</h3>
-          <div class="spell-text">${stripHtml(card.text) || "Описание отсутствует."}</div>
-        </div>
+    state.filtered.forEach((card) => {
+      const tile = document.createElement("article");
+      tile.className = "card-tile";
+      tile.innerHTML = `
+        <img
+          class="card-art"
+          src="${card.image}"
+          alt="${card.name}"
+          loading="lazy"
+          decoding="async"
+          fetchpriority="low"
+        >
       `;
-
-      grid.append(article);
+      grid.append(tile);
     });
+  }
+
+  function applyFilters() {
+    state.filtered = state.cards.filter(matchesFilters);
+    render();
+  }
+
+  async function exportCurrentSelection() {
+    if (!state.filtered.length) {
+      status.textContent = "Сначала выберите хотя бы одно заклинание.";
+      return;
+    }
+
+    try {
+      exportButton.disabled = true;
+      exportButton.textContent = "Готовлю WebP...";
+
+      await window.Shared.exportCardSheet(
+        state.filtered.map((card) => ({
+          ...card,
+          exportImage: card.image,
+          image: card.image
+        })),
+        {
+          fileBaseName: state.tier === "ALL" ? "bg-spells" : `bg-spells-tier-${state.tier}`,
+          columns: 6,
+          gap: 10,
+          padding: 10,
+          cardWidth: 360,
+          artHeight: 504,
+          renderScale: 1.45,
+          showHeader: false,
+          showText: false,
+          showMeta: false,
+          showCardBackground: false,
+          background: "transparent",
+          maxWidthOrHeight: 3200,
+          maxSizeMB: 1.95,
+          initialQuality: 0.96,
+          outputQuality: 0.98
+        }
+      );
+    } catch (error) {
+      console.error(error);
+      status.textContent = `Ошибка экспорта: ${error.message}`;
+    } finally {
+      window.setTimeout(() => {
+        exportButton.disabled = false;
+        exportButton.textContent = "Скачать выборку";
+      }, 900);
+    }
   }
 
   async function loadSpells() {
     try {
-      const response = await fetch("./api/battlegrounds-spells?locale=ru_RU", {
-        headers: {
-          Accept: "application/json"
-        }
+      const response = await fetch("./api/battlegrounds-spells?locale=ru_RU&pageSize=200", {
+        headers: { Accept: "application/json" }
       });
 
       if (!response.ok) {
@@ -101,24 +120,36 @@
       }
 
       const payload = await response.json();
-      state.cards = payload.cards || [];
-      status.textContent = `Источник: ${payload.source}. Импортировано ${payload.total || state.cards.length} заклинаний.`;
-      render();
+      state.cards = (payload.cards || []).map((card) => ({
+        ...card,
+        text: stripHtml(card.text || "")
+      }));
+
+      applyFilters();
     } catch (error) {
-      status.textContent = "Не удалось загрузить заклинания из Blizzard API.";
-      grid.innerHTML = `<p class="tier-builder-empty">Ошибка загрузки: ${error.message}</p>`;
+      status.textContent = `Ошибка загрузки: ${error.message}`;
     }
   }
 
-  searchInput.addEventListener("input", (event) => {
-    state.search = event.target.value.trim().toLowerCase();
-    render();
-  });
+  searchInput.addEventListener("input", window.Shared.debounce((event) => {
+    state.search = event.target.value.trim();
+    applyFilters();
+  }, 120));
 
   filterSelect.addEventListener("change", (event) => {
-    state.filter = event.target.value;
-    render();
+    state.tier = event.target.value;
+    applyFilters();
   });
+
+  resetButton.addEventListener("click", () => {
+    state.search = "";
+    state.tier = "ALL";
+    searchInput.value = "";
+    filterSelect.value = "ALL";
+    applyFilters();
+  });
+
+  exportButton.addEventListener("click", exportCurrentSelection);
 
   loadSpells();
 })();

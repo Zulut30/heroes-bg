@@ -21,27 +21,28 @@
     </header>
 
     <main class="builder-layout">
-      <section class="builder-sidebar">
+      <section class="builder-sidebar builder-sidebar-wide">
         <div class="builder-sidebar-head">
           <p class="eyebrow">Strategy Builder</p>
           <h1 class="builder-title">Конструктор стратегий</h1>
           <p class="hero-copy">
-            Собирай стратегии из существ и заклинаний, перетаскивай их на полотно и экспортируй итоговую схему
-            с прозрачным фоном.
+            Собирай стратегию из героев, существ и заклинаний. Библиотека слева стала шире, чтобы было легче искать и
+            комбинировать ключевые карты.
           </p>
         </div>
 
         <div class="builder-controls">
           <label class="control-field">
             <span class="control-label">Поиск по картам</span>
-            <input id="builder-search" class="text-input" type="search" placeholder="Например, мурлок, заклинание, божественный щит">
+            <input id="builder-search" class="text-input" type="search" placeholder="Например, Морхи, мурлок, таверна, заклинание">
           </label>
 
-          <div class="builder-filter-row">
+          <div class="builder-filter-row builder-filter-row-triple">
             <label class="control-field">
               <span class="control-label">Источник</span>
               <select id="builder-source" class="select-input">
                 <option value="ALL">Все карты</option>
+                <option value="HERO">Герои</option>
                 <option value="MINION">Существа</option>
                 <option value="SPELL">Заклинания</option>
               </select>
@@ -64,9 +65,7 @@
                 <option value="UNDEAD">Нежить</option>
               </select>
             </label>
-          </div>
 
-          <div class="builder-filter-row builder-filter-row-secondary">
             <label class="control-field">
               <span class="control-label">Таверна</span>
               <select id="builder-level" class="select-input">
@@ -90,21 +89,21 @@
         </div>
 
         <div id="builder-status" class="library-status">Загружаю карты...</div>
-        <div id="builder-library" class="builder-library" aria-live="polite"></div>
+        <div id="builder-library" class="builder-library builder-library-dense" aria-live="polite"></div>
       </section>
 
-      <section class="builder-canvas-panel">
+      <section class="builder-canvas-panel builder-canvas-panel-compact">
         <div class="builder-canvas-head">
           <div>
-            <p class="eyebrow">Wide Workspace</p>
+            <p class="eyebrow">Board</p>
             <h2 class="panel-title">Полотно стратегии</h2>
           </div>
           <div id="builder-counter" class="filter-caption">0 карт на полотне</div>
         </div>
 
-        <div id="strategy-board" class="strategy-board">
+        <div id="strategy-board" class="strategy-board strategy-board-compact">
           <div class="strategy-board-hint">
-            Перетащи сюда существ и заклинания из библиотеки, чтобы быстро собрать стратегию
+            Перетащи сюда героев, существ и заклинания из библиотеки слева
           </div>
         </div>
       </section>
@@ -113,6 +112,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
   <script src="./shared.js"></script>
+  <script src="./tier-data.js"></script>
   <script src="./strategy-builder.js"></script>
 </body>
 </html>
