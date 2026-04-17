@@ -1,21 +1,43 @@
 const { fetchBlizzardJson, normalizeLocale, sendJson } = require("./_blizzard");
 
-module.exports = async function handler(req, res) {
-  const locale = normalizeLocale(req.query.locale || "ru_RU");
-  const pageSize = Math.min(Number(req.query.pageSize) || 100, 100);
+async function fetchAllBattlegroundCards(locale) {
+  const cards = [];
+  let page = 1;
+  let pageCount = 1;
 
-  try {
+  while (page <= pageCount) {
     const response = await fetchBlizzardJson("/cards", {
       locale,
       gameMode: "battlegrounds",
-      type: "spell",
-      sort: "manaCost:asc",
-      page: 1,
-      pageSize
+      sort: "tier:asc,manaCost:asc",
+      page,
+      pageSize: 500
     });
 
-    const cards = (response.cards || [])
-      .filter((card) => card && card.battlegrounds)
+    cards.push(...(response.cards || []));
+    pageCount = Number(response.pageCount) || 1;
+    page += 1;
+  }
+
+  return cards;
+}
+
+module.exports = async function handler(req, res) {
+  const locale = normalizeLocale(req.query.locale || "ru_RU");
+  const sortLocale = String(locale).replace("_", "-");
+  const pageSize = Math.min(Number(req.query.pageSize) || 200, 500);
+
+  try {
+    const battlegroundCards = await fetchAllBattlegroundCards(locale);
+
+    const cards = battlegroundCards
+      .filter((card) => card && card.battlegrounds && Number(card.cardTypeId) === 42)
+      .sort((left, right) => {
+        return (left.battlegrounds?.tier || 0) - (right.battlegrounds?.tier || 0)
+          || (left.manaCost || 0) - (right.manaCost || 0)
+          || String(left.name || "").localeCompare(String(right.name || ""), sortLocale);
+      })
+      .slice(0, pageSize)
       .map((card) => ({
         id: card.id,
         slug: card.slug,
@@ -30,6 +52,7 @@ module.exports = async function handler(req, res) {
         typeId: card.cardTypeId || null,
         spellSchoolId: card.spellSchoolId || null,
         classId: card.classId || null,
+        tier: card.battlegrounds.tier ?? null,
         battlegrounds: {
           hero: Boolean(card.battlegrounds.hero),
           quest: Boolean(card.battlegrounds.quest),
@@ -42,7 +65,7 @@ module.exports = async function handler(req, res) {
     sendJson(res, 200, {
       source: "Blizzard Hearthstone API",
       locale,
-      total: cards.length,
+      total: battlegroundCards.filter((card) => card && card.battlegrounds && Number(card.cardTypeId) === 42).length,
       cards
     });
   } catch (error) {
