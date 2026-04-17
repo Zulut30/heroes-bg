@@ -674,6 +674,7 @@ h1 {
 
 .builder-library {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   max-height: calc(100vh - 420px);
   margin-top: 16px;
@@ -1187,6 +1188,7 @@ h1 {
   }
 
   .builder-library {
+    grid-template-columns: 1fr;
     max-height: 60vh;
   }
 
