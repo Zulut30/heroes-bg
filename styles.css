@@ -713,8 +713,47 @@ h1 {
 }
 
 .tier-builder-rows {
+  position: relative;
   display: grid;
   gap: 16px;
+  isolation: isolate;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+}
+
+.tier-builder-rows.has-wallpaper {
+  background: #030813;
+  border: 1px solid var(--panel-border);
+  overflow: hidden;
+}
+
+.tier-builder-rows.has-wallpaper::before {
+  content: "";
+  position: absolute;
+  inset: -40px;
+  background: url("./wallpaper.jpg") center / cover no-repeat;
+  filter: blur(14px) brightness(0.45);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.tier-builder-rows.has-wallpaper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 8, 16, 0.35);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.tier-builder-rows.has-wallpaper > .tier-builder-row {
+  position: relative;
+  z-index: 2;
+}
+
+.tier-builder-row-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .tier-builder-row {

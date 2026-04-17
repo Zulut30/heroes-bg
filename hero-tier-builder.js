@@ -25,6 +25,16 @@
     D: "Слабый тир"
   };
 
+  const BACKGROUND_STORAGE_KEY = "hero-tier-builder-background-mode-v1";
+
+  function loadBackgroundMode() {
+    try {
+      return window.localStorage.getItem(BACKGROUND_STORAGE_KEY) === "wallpaper" ? "wallpaper" : "transparent";
+    } catch (error) {
+      return "transparent";
+    }
+  }
+
   const state = {
     cards: [],
     cardsById: new Map(),
@@ -34,12 +44,16 @@
     race: "ALL",
     level: "ALL",
     accessorySize: "ALL",
-    draggingCardId: null
+    draggingCardId: null,
+    backgroundMode: loadBackgroundMode()
   };
 
   const rowsRoot = document.getElementById("tier-builder-rows");
   const poolRoot = document.getElementById("tier-builder-pool");
   const searchInput = document.getElementById("tier-builder-search");
+  const backgroundToggle = document.getElementById("tier-builder-toggle-background");
+  const downloadAllPngButton = document.getElementById("tier-builder-download-all-png");
+  const downloadAllWebpButton = document.getElementById("tier-builder-download-all-webp");
   const sourceFiltersEl = document.getElementById("tier-builder-source-filters");
   const raceFiltersEl = document.getElementById("tier-builder-race-filters");
   const levelFiltersEl = document.getElementById("tier-builder-level-filters");
@@ -482,8 +496,8 @@
     return zone;
   }
 
-  async function exportTier(tier) {
-    const cards = state.placements[tier].map((id) => state.cardsById.get(id)).filter((card) => card && matchesFilters(card));
+  async function exportTier(tier, fileType = "png") {
+    const cards = state.placements[tier].map((id) => state.cardsById.get(id)).filter(Boolean);
     if (!cards.length) {
       return;
     }
@@ -527,6 +541,10 @@
     canvas.height = Math.ceil(totalHeight);
     const ctx = canvas.getContext("2d");
 
+    if (state.backgroundMode === "wallpaper") {
+      await drawWallpaperBackground(ctx, canvas.width, canvas.height);
+    }
+
     let cursorY = TOP_PADDING;
     rowEntries.forEach((row, rowIndex) => {
       const rowMaxHeight = rowHeights[rowIndex];
@@ -540,17 +558,151 @@
       cursorY += rowMaxHeight + ROW_GAP;
     });
 
+    const mime = fileType === "webp" ? "image/webp" : "image/png";
+    const quality = fileType === "webp" ? 0.98 : 1;
+    const extension = fileType === "webp" ? "webp" : "png";
     const blob = await new Promise((resolve, reject) => {
-      canvas.toBlob((result) => result ? resolve(result) : reject(new Error("Не удалось собрать тир.")), "image/png", 1);
+      canvas.toBlob((result) => result ? resolve(result) : reject(new Error("Не удалось собрать тир.")), mime, quality);
     });
-    const blobUrl = URL.createObjectURL(blob);
+    triggerDownload(blob, `tier-${tier.toLowerCase()}.${extension}`);
+  }
+
+  async function drawWallpaperBackground(ctx, width, height) {
+    try {
+      const wallpaper = await window.Shared.loadImageFromSource("./wallpaper.jpg");
+      const blur = 14;
+      const bleed = blur * 4;
+      const targetW = width + bleed * 2;
+      const targetH = height + bleed * 2;
+      const wallpaperRatio = wallpaper.width / wallpaper.height;
+      const targetRatio = targetW / targetH;
+      let drawW;
+      let drawH;
+      if (wallpaperRatio > targetRatio) {
+        drawH = targetH;
+        drawW = drawH * wallpaperRatio;
+      } else {
+        drawW = targetW;
+        drawH = drawW / wallpaperRatio;
+      }
+      const drawX = -bleed + (targetW - drawW) / 2;
+      const drawY = -bleed + (targetH - drawH) / 2;
+      ctx.save();
+      ctx.filter = `blur(${blur}px) brightness(0.45)`;
+      ctx.drawImage(wallpaper, drawX, drawY, drawW, drawH);
+      ctx.restore();
+      ctx.fillStyle = "rgba(4, 8, 16, 0.35)";
+      ctx.fillRect(0, 0, width, height);
+    } catch (error) {
+      console.warn("Не удалось отрисовать игровой фон:", error);
+    }
+  }
+
+  function triggerDownload(blob, name) {
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = blobUrl;
-    link.download = `tier-${tier.toLowerCase()}-${state.source.toLowerCase()}.png`;
+    link.href = url;
+    link.download = name;
     document.body.append(link);
     link.click();
     link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1200);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1200);
+  }
+
+  async function exportAllTiers(fileType = "png") {
+    const EXPORT_WIDTH = 2400;
+    const SIDE_PADDING = 48;
+    const OUTER_TOP = 36;
+    const OUTER_BOTTOM = 36;
+    const COLUMN_GAP = 20;
+    const INNER_ROW_GAP = 16;
+    const TIER_GAP = 36;
+    const LABEL_HEIGHT = 80;
+
+    const tierSections = [];
+    for (const tier of TIER_ORDER) {
+      const cards = state.placements[tier].map((id) => state.cardsById.get(id)).filter(Boolean);
+      if (!cards.length) continue;
+      const loaded = await Promise.all(cards.map(async (card) => {
+        try {
+          const image = await window.Shared.loadImageFromSource(getCardArtUrl(card, "512x"));
+          return { card, image };
+        } catch (error) {
+          console.warn(`Не удалось загрузить карту ${card.name}:`, error);
+          return null;
+        }
+      }));
+      const entries = loaded.filter(Boolean);
+      if (entries.length) {
+        tierSections.push({ tier, entries });
+      }
+    }
+    if (!tierSections.length) return;
+
+    const COLUMNS = Math.min(6, Math.max(...tierSections.map((section) => Math.min(section.entries.length, 6))));
+    const cardWidth = (EXPORT_WIDTH - SIDE_PADDING * 2 - COLUMN_GAP * (COLUMNS - 1)) / COLUMNS;
+
+    const sectionLayouts = tierSections.map(({ tier, entries }) => {
+      const rows = Math.ceil(entries.length / COLUMNS);
+      const rowEntries = [];
+      for (let r = 0; r < rows; r += 1) {
+        rowEntries.push(entries.slice(r * COLUMNS, (r + 1) * COLUMNS));
+      }
+      const rowHeights = rowEntries.map((row) => (
+        Math.max(...row.map(({ image }) => cardWidth * (image.height / image.width)))
+      ));
+      const contentHeight = rowHeights.reduce((sum, h) => sum + h, 0) + Math.max(0, rows - 1) * INNER_ROW_GAP;
+      return { tier, rowEntries, rowHeights, contentHeight };
+    });
+
+    const totalHeight = OUTER_TOP
+      + sectionLayouts.reduce((sum, section) => sum + LABEL_HEIGHT + section.contentHeight, 0)
+      + Math.max(0, sectionLayouts.length - 1) * TIER_GAP
+      + OUTER_BOTTOM;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = EXPORT_WIDTH;
+    canvas.height = Math.ceil(totalHeight);
+    const ctx = canvas.getContext("2d");
+
+    if (state.backgroundMode === "wallpaper") {
+      await drawWallpaperBackground(ctx, canvas.width, canvas.height);
+    }
+
+    let cursorY = OUTER_TOP;
+    sectionLayouts.forEach((section, sectionIndex) => {
+      ctx.save();
+      ctx.fillStyle = "rgba(240, 215, 154, 0.95)";
+      ctx.font = `700 56px "BgDisplay", Georgia, serif`;
+      ctx.textBaseline = "middle";
+      ctx.fillText(`${section.tier} · ${tierLabels[section.tier] || ""}`, SIDE_PADDING, cursorY + LABEL_HEIGHT / 2);
+      ctx.restore();
+      cursorY += LABEL_HEIGHT;
+
+      section.rowEntries.forEach((row, rowIndex) => {
+        const rowMaxHeight = section.rowHeights[rowIndex];
+        row.forEach(({ image }, colIndex) => {
+          const imageRatio = image.width / image.height;
+          const cardHeight = cardWidth / imageRatio;
+          const x = SIDE_PADDING + colIndex * (cardWidth + COLUMN_GAP);
+          const y = cursorY + (rowMaxHeight - cardHeight) / 2;
+          ctx.drawImage(image, x, y, cardWidth, cardHeight);
+        });
+        cursorY += rowMaxHeight + (rowIndex < section.rowEntries.length - 1 ? INNER_ROW_GAP : 0);
+      });
+
+      if (sectionIndex < sectionLayouts.length - 1) {
+        cursorY += TIER_GAP;
+      }
+    });
+
+    const mime = fileType === "webp" ? "image/webp" : "image/png";
+    const quality = fileType === "webp" ? 0.98 : 1;
+    const extension = fileType === "webp" ? "webp" : "png";
+    const blob = await new Promise((resolve, reject) => {
+      canvas.toBlob((result) => result ? resolve(result) : reject(new Error("Не удалось собрать тир-лист.")), mime, quality);
+    });
+    triggerDownload(blob, `tier-list.${extension}`);
   }
 
   function renderPool() {
@@ -588,14 +740,17 @@
               <p class="tier-builder-count">${state.placements[tier].length} карт</p>
             </div>
           </div>
-          <button class="secondary-button tier-builder-export" type="button">Скачать тир</button>
+          <div class="tier-builder-row-actions">
+            <button class="secondary-button tier-builder-export" type="button" data-export="png">PNG</button>
+            <button class="secondary-button tier-builder-export-webp" type="button" data-export="webp">WebP</button>
+          </div>
         </div>
       `;
 
       const zone = buildDropzone(tier);
       const cards = state.placements[tier]
         .map((id) => state.cardsById.get(id))
-        .filter((card) => matchesFilters(card));
+        .filter(Boolean);
 
       if (!cards.length) {
         const empty = document.createElement("p");
@@ -607,7 +762,8 @@
       }
 
       row.append(zone);
-      row.querySelector(".tier-builder-export").addEventListener("click", () => exportTier(tier));
+      row.querySelector('[data-export="png"]').addEventListener("click", () => exportTier(tier, "png"));
+      row.querySelector('[data-export="webp"]').addEventListener("click", () => exportTier(tier, "webp"));
       rowsRoot.append(row);
     });
   }
@@ -729,9 +885,64 @@
 
   document.addEventListener("wheel", (event) => {
     if (state.draggingCardId) {
+      event.preventDefault();
       window.scrollBy({ top: event.deltaY, left: event.deltaX, behavior: "auto" });
     }
-  }, { passive: true });
+  }, { passive: false });
+
+  let edgeScrollRAF = null;
+  let edgeScrollDirection = 0;
+  function stopEdgeScroll() {
+    if (edgeScrollRAF !== null) {
+      cancelAnimationFrame(edgeScrollRAF);
+      edgeScrollRAF = null;
+    }
+    edgeScrollDirection = 0;
+  }
+  function stepEdgeScroll() {
+    if (edgeScrollDirection !== 0) {
+      window.scrollBy(0, edgeScrollDirection * 16);
+    }
+    edgeScrollRAF = requestAnimationFrame(stepEdgeScroll);
+  }
+  document.addEventListener("dragover", (event) => {
+    if (!state.draggingCardId) return;
+    const EDGE = 80;
+    if (event.clientY < EDGE) edgeScrollDirection = -1;
+    else if (window.innerHeight - event.clientY < EDGE) edgeScrollDirection = 1;
+    else edgeScrollDirection = 0;
+    if (edgeScrollRAF === null && edgeScrollDirection !== 0) {
+      edgeScrollRAF = requestAnimationFrame(stepEdgeScroll);
+    }
+  });
+  document.addEventListener("dragend", stopEdgeScroll);
+  document.addEventListener("drop", stopEdgeScroll);
+
+  if (backgroundToggle) {
+    backgroundToggle.checked = state.backgroundMode === "wallpaper";
+    backgroundToggle.addEventListener("change", (event) => {
+      state.backgroundMode = event.target.checked ? "wallpaper" : "transparent";
+      try {
+        window.localStorage.setItem(BACKGROUND_STORAGE_KEY, state.backgroundMode);
+      } catch (error) {
+        console.warn("Не удалось сохранить режим фона.", error);
+      }
+      applyBoardBackground();
+    });
+  }
+  applyBoardBackground();
+
+  function applyBoardBackground() {
+    if (!rowsRoot) return;
+    rowsRoot.classList.toggle("has-wallpaper", state.backgroundMode === "wallpaper");
+  }
+
+  if (downloadAllPngButton) {
+    downloadAllPngButton.addEventListener("click", () => exportAllTiers("png"));
+  }
+  if (downloadAllWebpButton) {
+    downloadAllWebpButton.addEventListener("click", () => exportAllTiers("webp"));
+  }
 
   bootstrap();
 })();
