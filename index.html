@@ -7,8 +7,8 @@
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="stylesheet" href="./styles.css">
 </head>
-<body>
-  <div class="page-shell">
+<body class="landing-page">
+  <div class="page-shell page-shell-wide">
     <header class="site-header">
       <a class="brand-mark" href="./index.html">Battlegrounds Hub</a>
       <nav class="site-nav" aria-label="Основная навигация">
@@ -21,50 +21,120 @@
       </nav>
     </header>
 
-    <main>
-      <section class="poster-hero">
-        <p class="eyebrow">Hearthstone Battlegrounds Toolkit</p>
-        <h1>Один хаб для героев, миньонов, заклинаний и готовых экспортов</h1>
-        <p class="hero-copy">
-          Сайт теперь объединяет универсальный конструктор тир-листов, библиотеку карт Полей сражений, конструктор стратегий,
-          отдельные страницы заклинаний и аксессуаров, а также прозрачный экспорт собранных выборок.
-        </p>
-        <div class="hero-actions">
-          <a class="primary-link" href="./hero-tier-builder.html">Открыть конструктор тир-листов</a>
-          <a class="secondary-link" href="./library.html">Открыть библиотеку карт</a>
+    <main class="landing-main">
+      <section class="landing-hero">
+        <div class="landing-hero-copy">
+          <span class="landing-badge">Hearthstone · Battlegrounds</span>
+          <h1 class="landing-title">Конструктор БГ</h1>
+          <p class="landing-lead">
+            Всё для подготовки стратегий Полей сражений в одном месте — фильтруй героев, заклинания, существ и аксессуары,
+            собирай тир-листы и полотна стратегий, добавляй стрелки и подписи, скачивай готовую картинку в PNG или WebP.
+          </p>
+          <div class="landing-cta">
+            <a class="landing-cta-primary" href="./strategy-builder.html">
+              <span>Собрать стратегию</span>
+              <span class="landing-cta-arrow" aria-hidden="true">→</span>
+            </a>
+            <a class="landing-cta-secondary" href="./hero-tier-builder.html">Открыть тир-листы</a>
+          </div>
+
+          <ul class="landing-stats" aria-label="Библиотека карт">
+            <li>
+              <span class="landing-stat-value">270+</span>
+              <span class="landing-stat-label">существ</span>
+            </li>
+            <li>
+              <span class="landing-stat-value">113</span>
+              <span class="landing-stat-label">героев</span>
+            </li>
+            <li>
+              <span class="landing-stat-value">71</span>
+              <span class="landing-stat-label">заклинание</span>
+            </li>
+            <li>
+              <span class="landing-stat-value">70</span>
+              <span class="landing-stat-label">аксессуаров</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="landing-hero-visual" aria-hidden="true">
+          <div class="landing-glow landing-glow-a"></div>
+          <div class="landing-glow landing-glow-b"></div>
+          <div class="landing-card-stack">
+            <span class="landing-ghost-card landing-ghost-card-1"></span>
+            <span class="landing-ghost-card landing-ghost-card-2"></span>
+            <span class="landing-ghost-card landing-ghost-card-3"></span>
+            <span class="landing-ghost-card landing-ghost-card-4"></span>
+            <span class="landing-ghost-card landing-ghost-card-5"></span>
+          </div>
         </div>
       </section>
 
-      <section class="feature-grid">
-        <a class="feature-panel" href="./hero-tier-builder.html">
-          <span class="panel-kicker">Страница 1</span>
-          <h2>Конструктор тир-листов</h2>
-          <p>Универсальный drag-and-drop конструктор для существ, заклинаний, аксессуаров и героев с быстрым перераспределением по тирам.</p>
-        </a>
+      <section class="landing-features" aria-label="Разделы сайта">
+        <h2 class="landing-section-title">Инструменты</h2>
+        <div class="landing-feature-grid">
+          <a class="landing-feature landing-feature-strategy" href="./strategy-builder.html">
+            <span class="landing-feature-kicker">Strategy</span>
+            <h3>Конструктор стратегий</h3>
+            <p>Полотно 5×3, быстрые слоты, аннотации стрелками и подписями, 4 сменных фона, подсветка ключевых карт и экспорт в PNG/WebP.</p>
+            <span class="landing-feature-cta">Открыть конструктор →</span>
+          </a>
 
-        <a class="feature-panel" href="./library.html">
-          <span class="panel-kicker">Страница 2</span>
-          <h2>Библиотека карт Battlegrounds</h2>
-          <p>Поиск, фильтры по типу существа и уровню таверны, lightbox и экспорт текущей выборки.</p>
-        </a>
+          <a class="landing-feature landing-feature-tier" href="./hero-tier-builder.html">
+            <span class="landing-feature-kicker">Tier List</span>
+            <h3>Конструктор тир-листов</h3>
+            <p>Drag-and-drop распределение героев и карт по тирам S/A/B/C/D, сменный игровой фон, экспорт одного тира или сразу всех.</p>
+            <span class="landing-feature-cta">Собрать тир-лист →</span>
+          </a>
 
-        <a class="feature-panel" href="./blizzard-spells.html">
-          <span class="panel-kicker">Страница 3</span>
-          <h2>Заклинания</h2>
-          <p>Прозрачная библиотека заклинаний с фильтром по уровню таверны, исключением дуо-карт и скачиваемой выборкой.</p>
-        </a>
+          <a class="landing-feature landing-feature-library" href="./library.html">
+            <span class="landing-feature-kicker">Library</span>
+            <h3>Библиотека существ</h3>
+            <p>Все миньоны Полей сражений с фильтрами по расе и уровню таверны, лайтбоксом и экспортом текущей выборки.</p>
+            <span class="landing-feature-cta">Перейти к картам →</span>
+          </a>
 
-        <a class="feature-panel" href="./accessories.html">
-          <span class="panel-kicker">Страница 4</span>
-          <h2>Аксессуары</h2>
-          <p>Отдельная страница аксессуаров с быстрым переключением между малыми и большими и прозрачным экспортом выборки.</p>
-        </a>
+          <a class="landing-feature landing-feature-spells" href="./blizzard-spells.html">
+            <span class="landing-feature-kicker">Spells</span>
+            <h3>Заклинания таверны</h3>
+            <p>Свежий список заклинаний напрямую из Blizzard API с фильтром по уровню таверны и прозрачным экспортом.</p>
+            <span class="landing-feature-cta">Посмотреть заклинания →</span>
+          </a>
 
-        <a class="feature-panel" href="./strategy-builder.html">
-          <span class="panel-kicker">Страница 5</span>
-          <h2>Конструктор стратегий</h2>
-          <p>Перетаскивай карты на прозрачное полотно, собирай комбо и скачивай итоговую картинку стратегии.</p>
-        </a>
+          <a class="landing-feature landing-feature-accessories" href="./accessories.html">
+            <span class="landing-feature-kicker">Accessories</span>
+            <h3>Аксессуары</h3>
+            <p>Малые и большие аксессуары с быстрым переключателем и экспортом выбранного набора.</p>
+            <span class="landing-feature-cta">Перейти к аксессуарам →</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="landing-highlights" aria-label="Что умеет сайт">
+        <h2 class="landing-section-title">Что можно делать</h2>
+        <div class="landing-highlight-grid">
+          <article class="landing-highlight">
+            <span class="landing-highlight-icon" aria-hidden="true">✦</span>
+            <h4>Русский и английский поиск</h4>
+            <p>Названия сопоставляются по ID Blizzard — ищи «murloc» или «deathrattle», если не помнишь русское имя карты.</p>
+          </article>
+          <article class="landing-highlight">
+            <span class="landing-highlight-icon" aria-hidden="true">❂</span>
+            <h4>Игровые фоны и прозрачный PNG</h4>
+            <p>Четыре встроенных wallpaper с блюром и затемнением, либо прозрачный фон для вставки в свои материалы.</p>
+          </article>
+          <article class="landing-highlight">
+            <span class="landing-highlight-icon" aria-hidden="true">➤</span>
+            <h4>Аннотации</h4>
+            <p>Красные стрелки, плюсы, крест и подписи «Ключевая» / «Прокрутка» — всё сохраняется в скачиваемую картинку.</p>
+          </article>
+          <article class="landing-highlight">
+            <span class="landing-highlight-icon" aria-hidden="true">★</span>
+            <h4>Быстрые слоты</h4>
+            <p>До 10 карт, которые ты используешь чаще всего — держатся между сессиями и перетаскиваются на полотно одним кликом.</p>
+          </article>
+        </div>
       </section>
     </main>
   </div>
