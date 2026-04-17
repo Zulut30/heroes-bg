@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Библиотека аксессуаров</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="site-header">
+      <a class="brand-mark" href="./index.html">Battlegrounds Hub</a>
+      <nav class="site-nav" aria-label="Основная навигация">
+        <a class="nav-link" href="./index.html">Главная</a>
+        <a class="nav-link" href="./tier-list.html">Тир-лист</a>
+        <a class="nav-link" href="./hero-tier-builder.html">Конструктор тиров</a>
+        <a class="nav-link" href="./library.html">Библиотека карт</a>
+        <a class="nav-link" href="./blizzard-spells.html">Заклинания</a>
+        <a class="nav-link is-active" href="./accessories.html">Аксессуары</a>
+        <a class="nav-link" href="./strategy-builder.html">Конструктор стратегий</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="library-controls-panel">
+        <div class="controls-topline">
+          <div>
+            <p class="eyebrow">Фильтры</p>
+            <h2 class="panel-title">Библиотека аксессуаров</h2>
+          </div>
+          <div class="controls-actions">
+            <button id="accessories-reset" class="secondary-button" type="button">Сбросить</button>
+            <button id="accessories-export" class="download-button" type="button">Скачать выборку</button>
+          </div>
+        </div>
+
+        <div class="controls-grid">
+          <label class="control-field">
+            <span class="control-label">Поиск</span>
+            <input id="accessories-search" class="text-input" type="search" placeholder="Например, амулет, портрет, наклейка, кольцо">
+          </label>
+
+          <div class="control-field">
+            <span class="control-label">Размер аксессуара</span>
+            <div class="library-segmented" role="tablist" aria-label="Размер аксессуара">
+              <button class="library-segmented-button is-active" id="accessories-tab-all" type="button" data-size="ALL">Все</button>
+              <button class="library-segmented-button" id="accessories-tab-small" type="button" data-size="SMALL">Малые</button>
+              <button class="library-segmented-button" id="accessories-tab-large" type="button" data-size="LARGE">Большие</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="library-results">
+        <div class="results-bar">
+          <div id="accessories-status" class="library-status">Загружаю аксессуары...</div>
+          <div id="accessories-counter" class="library-status">0 карточек</div>
+        </div>
+        <div id="accessories-grid" class="library-card-grid library-card-grid-flat" aria-live="polite"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pica@9.0.1/dist/pica.min.js"></script>
+  <script src="./shared.js"></script>
+  <script src="./accessories-data.js"></script>
+  <script src="./accessories.js"></script>
+</body>
+</html>

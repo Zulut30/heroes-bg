@@ -18,13 +18,13 @@
   const EXPORT_SIDE_PADDING = 120;
   const EXPORT_TOP_PADDING = 70;
   const EXPORT_BOTTOM_PADDING = 70;
-  const EXPORT_COLUMN_GAP = 92;
-  const EXPORT_ROW_GAP = 120;
+  const EXPORT_COLUMN_GAP = 82;
+  const EXPORT_ROW_GAP = 108;
   const SLOT_CARD_WIDTH = 0.142;
   const BOARD_INSET_X = 0.048;
   const BOARD_INSET_Y = 0.08;
-  const BOARD_COLUMN_GAP = 0.04;
-  const BOARD_ROW_GAP = 0.14;
+  const BOARD_COLUMN_GAP = 0.035;
+  const BOARD_ROW_GAP = 0.128;
 
   const raceNames = {
     NONE: "Без типа",
@@ -53,7 +53,7 @@
   };
 
   function getCardArtUrl(card, size = "512x") {
-    if (card?.source === "SPELL" || card?.source === "HERO") {
+    if (card?.source === "SPELL" || card?.source === "HERO" || card?.source === "ACCESSORY") {
       return card?.image || card?.artUrl || "";
     }
 
@@ -130,6 +130,9 @@
       card.source === "SPELL" ? "заклинание tavern spell" : "",
       card.source === "MINION" ? "существо minion" : "",
       card.source === "HERO" ? "герой hero" : "",
+      card.source === "ACCESSORY" ? "аксессуар accessory trinket малый большой" : "",
+      card.accessorySize === "SMALL" ? "малый small" : "",
+      card.accessorySize === "LARGE" ? "большой large" : "",
       (card.races || []).join(" "),
       `таверна ${card.techLevel || ""}`,
       `мана ${card.manaCost || ""}`
@@ -142,6 +145,8 @@
 
     const raceOk = state.race === "ALL"
       ? true
+      : state.source !== "ALL" && state.source !== "MINION"
+        ? true
       : card.source !== "MINION"
         ? false
         : state.race === "NONE"
@@ -150,7 +155,7 @@
 
     const levelOk = state.level === "ALL"
       ? true
-      : card.source === "HERO"
+      : card.source === "HERO" || card.source === "ACCESSORY"
         ? true
         : String(card.techLevel || "") === state.level;
 
@@ -166,6 +171,10 @@
       return `Герой • ${card.heroTier || "Пул героев"}`;
     }
 
+    if (card.source === "ACCESSORY") {
+      return `${card.accessorySize === "LARGE" ? "Большой аксессуар" : "Малый аксессуар"} • Новый слот стратегии`;
+    }
+
     const raceLabel = raceNames[(card.races || [])[0]] || "Без типа";
     return `${raceLabel} • Таверна ${card.techLevel || "?"}`;
   }
@@ -176,6 +185,9 @@
     }
     if (card.source === "HERO") {
       return "Герой";
+    }
+    if (card.source === "ACCESSORY") {
+      return "Аксессуар";
     }
     return "Существо";
   }
@@ -191,7 +203,8 @@
     const heroCount = state.filtered.filter((card) => card.source === "HERO").length;
     const minionCount = state.filtered.filter((card) => card.source === "MINION").length;
     const spellCount = state.filtered.filter((card) => card.source === "SPELL").length;
-    setStatus(`Доступно ${state.filtered.length} карт: ${heroCount} героев, ${minionCount} существ и ${spellCount} заклинаний.`);
+    const accessoryCount = state.filtered.filter((card) => card.source === "ACCESSORY").length;
+    setStatus(`Доступно ${state.filtered.length} карт: ${heroCount} героев, ${minionCount} существ, ${spellCount} заклинаний и ${accessoryCount} аксессуаров.`);
 
     state.filtered.forEach((card) => {
       const button = document.createElement("button");
@@ -430,6 +443,20 @@
     };
   }
 
+  function normalizeAccessoryCard(card) {
+    return {
+      id: card.id,
+      name: card.name,
+      text: "",
+      techLevel: 0,
+      races: [],
+      manaCost: 0,
+      source: "ACCESSORY",
+      image: encodeURI(card.image || ""),
+      accessorySize: card.size || "SMALL"
+    };
+  }
+
   function getHeroCards() {
     return (window.tierData || []).flatMap((tierEntry) => (
       (tierEntry.heroes || []).map((hero) => normalizeHeroCard(hero, tierEntry.tier))
@@ -457,8 +484,10 @@
       const heroes = getHeroCards();
       const minions = Array.isArray(libraryPayload.cards) ? libraryPayload.cards.map(normalizeMinionCard) : [];
       const spells = Array.isArray(spellsPayload.cards) ? spellsPayload.cards.map(normalizeSpellCard) : [];
+      const accessoriesPayload = window.accessoriesData || {};
+      const accessories = [...(accessoriesPayload.small || []), ...(accessoriesPayload.large || [])].map(normalizeAccessoryCard);
 
-      state.cards = [...heroes, ...minions, ...spells];
+      state.cards = [...heroes, ...minions, ...spells, ...accessories];
       updateLibrary();
       renderBoard();
     } catch (error) {

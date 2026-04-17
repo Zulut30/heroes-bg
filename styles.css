@@ -986,6 +986,39 @@ h1 {
   min-height: calc(100vh - 320px);
 }
 
+.library-segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.library-segmented-button {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.library-segmented-button:hover {
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+.library-segmented-button.is-active {
+  background: rgba(219, 192, 122, 0.18);
+  color: var(--text-strong);
+  box-shadow: inset 0 0 0 1px rgba(219, 192, 122, 0.22);
+}
+
 .strategy-board-hint {
   position: absolute;
   inset: 50% auto auto 50%;
@@ -1004,7 +1037,7 @@ h1 {
   overflow: visible;
   cursor: grab;
   transform: translate(-50%, -50%);
-  width: 15.8%;
+  width: 15.3%;
 }
 
 .placed-card-art {
