@@ -836,6 +836,8 @@
     svg.setAttribute("width", String(W));
     svg.setAttribute("height", String(H));
     svg.setAttribute("preserveAspectRatio", "none");
+    svg.setAttribute("overflow", "visible");
+    svg.style.overflow = "visible";
 
     const defs = document.createElementNS(SVG_NS, "defs");
     defs.innerHTML = `
@@ -934,15 +936,15 @@
       if (ann.type === "label") {
         const center = cardCenter(ann.cardUids[0]);
         if (!center) return;
-        const fontSize = cardWidthPx * 0.18;
-        const y = center.cy + cardHeightPx / 2 + fontSize * 0.9;
+        const fontSize = cardWidthPx * 0.13;
+        const y = center.cy + cardHeightPx / 2 + fontSize * 0.55;
         const text = document.createElementNS(SVG_NS, "text");
         text.setAttribute("x", String(center.cx));
         text.setAttribute("y", String(y));
         text.setAttribute("text-anchor", "middle");
         text.setAttribute("fill", "#fff8e6");
         text.setAttribute("stroke", "#0b0f1a");
-        text.setAttribute("stroke-width", String(Math.max(2, fontSize * 0.22)));
+        text.setAttribute("stroke-width", String(Math.max(2, fontSize * 0.26)));
         text.setAttribute("stroke-linejoin", "round");
         text.setAttribute("paint-order", "stroke fill");
         text.setAttribute("font-family", '"BgDisplay", Georgia, serif');
@@ -1211,14 +1213,14 @@
       if (ann.type === "label") {
         const rect = cardRects.get(ann.cardUids[0]);
         if (!rect) { ctx.restore(); return; }
-        const fontSize = cardWidth * 0.18;
+        const fontSize = cardWidth * 0.13;
         const y = rect.y + rect.h + fontSize * 0.95;
         ctx.font = `700 ${fontSize}px "BgDisplay", Georgia, serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "alphabetic";
         ctx.lineJoin = "round";
         ctx.strokeStyle = "#0b0f1a";
-        ctx.lineWidth = Math.max(2, fontSize * 0.22);
+        ctx.lineWidth = Math.max(2, fontSize * 0.26);
         ctx.fillStyle = "#fff8e6";
         ctx.strokeText(ann.text || "", rect.x + rect.w / 2, y);
         ctx.shadowColor = "transparent";
@@ -1314,9 +1316,30 @@
     const exportRows = Math.max(1, occupiedRows.length);
     const cardWidth = (EXPORT_WIDTH - EXPORT_SIDE_PADDING * 2 - EXPORT_COLUMN_GAP * (BOARD_COLUMNS - 1)) / BOARD_COLUMNS;
     const maxCardHeight = Math.max(...entries.map(({ image }) => cardWidth * (image.height / image.width)));
+
+    const rowsWithLabels = new Set();
+    state.annotations.forEach((ann) => {
+      if (ann.type !== "label") return;
+      const card = state.placed.find((c) => c.uid === ann.cardUids[0]);
+      if (!card) return;
+      const orig = Math.floor(card.slot / BOARD_COLUMNS);
+      const comp = rowMap.get(orig);
+      if (comp !== undefined) rowsWithLabels.add(comp);
+    });
+    const labelFontSize = cardWidth * 0.13;
+    const labelRowExtra = labelFontSize * 1.6;
+    const rowOffsets = new Array(exportRows);
+    let cursorY = EXPORT_TOP_PADDING;
+    for (let r = 0; r < exportRows; r += 1) {
+      rowOffsets[r] = cursorY;
+      cursorY += maxCardHeight;
+      if (rowsWithLabels.has(r)) cursorY += labelRowExtra;
+      if (r < exportRows - 1) cursorY += EXPORT_ROW_GAP;
+    }
+
     const canvas = document.createElement("canvas");
     canvas.width = EXPORT_WIDTH;
-    canvas.height = Math.ceil(EXPORT_TOP_PADDING + exportRows * maxCardHeight + Math.max(0, exportRows - 1) * EXPORT_ROW_GAP + EXPORT_BOTTOM_PADDING);
+    canvas.height = Math.ceil(cursorY + EXPORT_BOTTOM_PADDING);
     const ctx = canvas.getContext("2d");
 
     const wallpaperUrl = getBackgroundUrl(state.backgroundMode);
@@ -1362,7 +1385,7 @@
       const cardHeight = cardWidth / imageRatio;
       const column = card.slot % BOARD_COLUMNS;
       const x = EXPORT_SIDE_PADDING + column * (cardWidth + EXPORT_COLUMN_GAP);
-      const rowTop = EXPORT_TOP_PADDING + compactRow * (maxCardHeight + EXPORT_ROW_GAP);
+      const rowTop = rowOffsets[compactRow];
       const y = rowTop + (maxCardHeight - cardHeight) / 2;
       cardRects.set(card.uid, { x, y, w: cardWidth, h: cardHeight, cx: x + cardWidth / 2, cy: y + cardHeight / 2 });
       if (card.highlighted) {

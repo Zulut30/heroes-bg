@@ -1063,7 +1063,7 @@ h1 {
   position: relative;
   min-height: calc(100vh - 240px);
   margin-top: 18px;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 28px;
   background:
@@ -1503,6 +1503,7 @@ h1 {
   z-index: 0;
   pointer-events: none;
   will-change: transform;
+  clip-path: inset(40px round 28px);
 }
 
 .strategy-board[data-background="wallpaper"] { --board-wallpaper: url("./wallpaper.jpg"); }
