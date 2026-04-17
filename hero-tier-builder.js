@@ -26,10 +26,25 @@
   };
 
   const BACKGROUND_STORAGE_KEY = "hero-tier-builder-background-mode-v1";
+  const BACKGROUND_OPTIONS = [
+    { value: "transparent", label: "Без фона", url: null },
+    { value: "wallpaper", label: "Фон 1", url: "./wallpaper.jpg" },
+    { value: "wallpaper1", label: "Фон 2", url: "./wallpaper1.jpg" },
+    { value: "wallpaper2", label: "Фон 3", url: "./wallpaper2.jpg" },
+    { value: "wallpaper3", label: "Фон 4", url: "./wallpaper3.jpg" }
+  ];
+  const BACKGROUND_VALUES = new Set(BACKGROUND_OPTIONS.map((option) => option.value));
+  const wallpaperImageCache = new Map();
+
+  function getBackgroundUrl(mode) {
+    const entry = BACKGROUND_OPTIONS.find((option) => option.value === mode);
+    return entry ? entry.url : null;
+  }
 
   function loadBackgroundMode() {
     try {
-      return window.localStorage.getItem(BACKGROUND_STORAGE_KEY) === "wallpaper" ? "wallpaper" : "transparent";
+      const value = window.localStorage.getItem(BACKGROUND_STORAGE_KEY);
+      return BACKGROUND_VALUES.has(value) ? value : "transparent";
     } catch (error) {
       return "transparent";
     }
@@ -51,7 +66,7 @@
   const rowsRoot = document.getElementById("tier-builder-rows");
   const poolRoot = document.getElementById("tier-builder-pool");
   const searchInput = document.getElementById("tier-builder-search");
-  const backgroundToggle = document.getElementById("tier-builder-toggle-background");
+  const backgroundPickerEl = document.getElementById("tier-builder-background-picker");
   const downloadAllPngButton = document.getElementById("tier-builder-download-all-png");
   const downloadAllWebpButton = document.getElementById("tier-builder-download-all-webp");
   const sourceFiltersEl = document.getElementById("tier-builder-source-filters");
@@ -541,7 +556,7 @@
     canvas.height = Math.ceil(totalHeight);
     const ctx = canvas.getContext("2d");
 
-    if (state.backgroundMode === "wallpaper") {
+    if (state.backgroundMode !== "transparent") {
       await drawWallpaperBackground(ctx, canvas.width, canvas.height);
     }
 
@@ -568,8 +583,14 @@
   }
 
   async function drawWallpaperBackground(ctx, width, height) {
+    const url = getBackgroundUrl(state.backgroundMode);
+    if (!url) return;
     try {
-      const wallpaper = await window.Shared.loadImageFromSource("./wallpaper.jpg");
+      let wallpaper = wallpaperImageCache.get(url);
+      if (!wallpaper) {
+        wallpaper = await window.Shared.loadImageFromSource(url);
+        wallpaperImageCache.set(url, wallpaper);
+      }
       const blur = 14;
       const bleed = blur * 4;
       const targetW = width + bleed * 2;
@@ -665,7 +686,7 @@
     canvas.height = Math.ceil(totalHeight);
     const ctx = canvas.getContext("2d");
 
-    if (state.backgroundMode === "wallpaper") {
+    if (state.backgroundMode !== "transparent") {
       await drawWallpaperBackground(ctx, canvas.width, canvas.height);
     }
 
@@ -918,23 +939,47 @@
   document.addEventListener("dragend", stopEdgeScroll);
   document.addEventListener("drop", stopEdgeScroll);
 
-  if (backgroundToggle) {
-    backgroundToggle.checked = state.backgroundMode === "wallpaper";
-    backgroundToggle.addEventListener("change", (event) => {
-      state.backgroundMode = event.target.checked ? "wallpaper" : "transparent";
-      try {
-        window.localStorage.setItem(BACKGROUND_STORAGE_KEY, state.backgroundMode);
-      } catch (error) {
-        console.warn("Не удалось сохранить режим фона.", error);
-      }
-      applyBoardBackground();
+  renderBackgroundPicker();
+  applyBoardBackground();
+
+  function renderBackgroundPicker() {
+    if (!backgroundPickerEl) return;
+    if (backgroundPickerEl.childElementCount === 0) {
+      BACKGROUND_OPTIONS.forEach((option) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "background-chip";
+        button.dataset.bg = option.value;
+        button.setAttribute("aria-label", option.label);
+        button.title = option.label;
+        if (option.url) {
+          button.style.backgroundImage = `url("${option.url}")`;
+        } else {
+          button.classList.add("is-transparent");
+          button.textContent = "∅";
+        }
+        button.addEventListener("click", () => {
+          state.backgroundMode = option.value;
+          try {
+            window.localStorage.setItem(BACKGROUND_STORAGE_KEY, state.backgroundMode);
+          } catch (error) {
+            console.warn("Не удалось сохранить режим фона.", error);
+          }
+          applyBoardBackground();
+        });
+        backgroundPickerEl.append(button);
+      });
+    }
+    backgroundPickerEl.querySelectorAll(".background-chip").forEach((chip) => {
+      chip.classList.toggle("is-active", chip.dataset.bg === state.backgroundMode);
     });
   }
-  applyBoardBackground();
 
   function applyBoardBackground() {
     if (!rowsRoot) return;
-    rowsRoot.classList.toggle("has-wallpaper", state.backgroundMode === "wallpaper");
+    rowsRoot.classList.toggle("has-wallpaper", state.backgroundMode !== "transparent");
+    rowsRoot.dataset.background = state.backgroundMode;
+    renderBackgroundPicker();
   }
 
   if (downloadAllPngButton) {

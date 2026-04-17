@@ -731,11 +731,20 @@ h1 {
   content: "";
   position: absolute;
   inset: -40px;
-  background: url("./wallpaper.jpg") center / cover no-repeat;
+  background-image: var(--board-wallpaper, url("./wallpaper.jpg"));
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
   filter: blur(14px) brightness(0.45);
   z-index: 0;
   pointer-events: none;
+  will-change: transform;
 }
+
+.tier-builder-rows[data-background="wallpaper"] { --board-wallpaper: url("./wallpaper.jpg"); }
+.tier-builder-rows[data-background="wallpaper1"] { --board-wallpaper: url("./wallpaper1.jpg"); }
+.tier-builder-rows[data-background="wallpaper2"] { --board-wallpaper: url("./wallpaper2.jpg"); }
+.tier-builder-rows[data-background="wallpaper3"] { --board-wallpaper: url("./wallpaper3.jpg"); }
 
 .tier-builder-rows.has-wallpaper::after {
   content: "";
@@ -1187,6 +1196,50 @@ h1 {
   margin-left: auto;
 }
 
+.background-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 4px 6px;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.background-chip {
+  width: 34px;
+  height: 34px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  cursor: pointer;
+  padding: 0;
+  color: var(--muted-soft);
+  font-size: 1.1rem;
+  line-height: 1;
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.background-chip.is-transparent {
+  background: rgba(255, 255, 255, 0.04);
+  display: grid;
+  place-items: center;
+}
+
+.background-chip:hover {
+  transform: translateY(-1px);
+  border-color: rgba(240, 215, 154, 0.45);
+}
+
+.background-chip.is-active {
+  border-color: var(--gold-strong);
+  box-shadow: 0 0 0 2px rgba(240, 215, 154, 0.25);
+}
+
 .builder-toolbar-options .secondary-button.is-active {
   background: rgba(219, 192, 122, 0.22);
   color: var(--text);
@@ -1254,11 +1307,20 @@ h1 {
   content: "";
   position: absolute;
   inset: -40px;
-  background: url("./wallpaper.jpg") center / cover no-repeat;
+  background-image: var(--board-wallpaper, url("./wallpaper.jpg"));
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
   filter: blur(14px) brightness(0.45);
   z-index: 0;
   pointer-events: none;
+  will-change: transform;
 }
+
+.strategy-board[data-background="wallpaper"] { --board-wallpaper: url("./wallpaper.jpg"); }
+.strategy-board[data-background="wallpaper1"] { --board-wallpaper: url("./wallpaper1.jpg"); }
+.strategy-board[data-background="wallpaper2"] { --board-wallpaper: url("./wallpaper2.jpg"); }
+.strategy-board[data-background="wallpaper3"] { --board-wallpaper: url("./wallpaper3.jpg"); }
 
 .strategy-board.has-wallpaper::after {
   content: "";

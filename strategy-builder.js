@@ -11,7 +11,7 @@
   const exportPngButton = document.getElementById("builder-export-png");
   const exportWebpButton = document.getElementById("builder-export-webp");
   const toggleGridButton = document.getElementById("builder-toggle-grid");
-  const toggleBackgroundInput = document.getElementById("builder-toggle-background");
+  const backgroundPickerEl = document.getElementById("builder-background-picker");
   const quickSlotsEl = document.getElementById("quick-slots");
   const statusEl = document.getElementById("builder-status");
   const libraryEl = document.getElementById("builder-library");
@@ -100,10 +100,25 @@
     }
   }
 
+  const BACKGROUND_OPTIONS = [
+    { value: "transparent", label: "Без фона", url: null },
+    { value: "wallpaper", label: "Фон 1", url: "./wallpaper.jpg" },
+    { value: "wallpaper1", label: "Фон 2", url: "./wallpaper1.jpg" },
+    { value: "wallpaper2", label: "Фон 3", url: "./wallpaper2.jpg" },
+    { value: "wallpaper3", label: "Фон 4", url: "./wallpaper3.jpg" }
+  ];
+  const BACKGROUND_VALUES = new Set(BACKGROUND_OPTIONS.map((option) => option.value));
+  const wallpaperImageCache = new Map();
+
+  function getBackgroundUrl(mode) {
+    const entry = BACKGROUND_OPTIONS.find((option) => option.value === mode);
+    return entry ? entry.url : null;
+  }
+
   function loadBackgroundMode() {
     try {
       const value = window.localStorage.getItem(BACKGROUND_STORAGE_KEY);
-      return value === "wallpaper" ? "wallpaper" : "transparent";
+      return BACKGROUND_VALUES.has(value) ? value : "transparent";
     } catch (error) {
       return "transparent";
     }
@@ -177,15 +192,44 @@
 
   function applyBoardVisualSettings() {
     boardEl.classList.toggle("show-grid", state.showGrid);
-    boardEl.classList.toggle("has-wallpaper", state.backgroundMode === "wallpaper");
+    const hasWallpaper = state.backgroundMode !== "transparent";
+    boardEl.classList.toggle("has-wallpaper", hasWallpaper);
+    boardEl.dataset.background = state.backgroundMode;
     if (toggleGridButton) {
       toggleGridButton.classList.toggle("is-active", state.showGrid);
       toggleGridButton.textContent = state.showGrid ? "Скрыть сетку" : "Показать сетку";
       toggleGridButton.setAttribute("aria-pressed", state.showGrid ? "true" : "false");
     }
-    if (toggleBackgroundInput) {
-      toggleBackgroundInput.checked = state.backgroundMode === "wallpaper";
+    renderBackgroundPicker();
+  }
+
+  function renderBackgroundPicker() {
+    if (!backgroundPickerEl) return;
+    if (backgroundPickerEl.childElementCount === 0) {
+      BACKGROUND_OPTIONS.forEach((option) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "background-chip";
+        button.dataset.bg = option.value;
+        button.setAttribute("aria-label", option.label);
+        button.title = option.label;
+        if (option.url) {
+          button.style.backgroundImage = `url("${option.url}")`;
+        } else {
+          button.classList.add("is-transparent");
+          button.textContent = "∅";
+        }
+        button.addEventListener("click", () => {
+          state.backgroundMode = option.value;
+          saveBackgroundMode();
+          applyBoardVisualSettings();
+        });
+        backgroundPickerEl.append(button);
+      });
     }
+    backgroundPickerEl.querySelectorAll(".background-chip").forEach((chip) => {
+      chip.classList.toggle("is-active", chip.dataset.bg === state.backgroundMode);
+    });
   }
 
   function renderQuickSlots() {
@@ -759,9 +803,14 @@
     canvas.height = Math.ceil(EXPORT_TOP_PADDING + exportRows * maxCardHeight + Math.max(0, exportRows - 1) * EXPORT_ROW_GAP + EXPORT_BOTTOM_PADDING);
     const ctx = canvas.getContext("2d");
 
-    if (state.backgroundMode === "wallpaper") {
+    const wallpaperUrl = getBackgroundUrl(state.backgroundMode);
+    if (wallpaperUrl) {
       try {
-        const wallpaper = await window.Shared.loadImageFromSource("./wallpaper.jpg");
+        let wallpaper = wallpaperImageCache.get(wallpaperUrl);
+        if (!wallpaper) {
+          wallpaper = await window.Shared.loadImageFromSource(wallpaperUrl);
+          wallpaperImageCache.set(wallpaperUrl, wallpaper);
+        }
         const bleed = WALLPAPER_BLUR_PX * 4;
         const targetW = canvas.width + bleed * 2;
         const targetH = canvas.height + bleed * 2;
@@ -1037,13 +1086,6 @@ function normalizeHeroCard(hero, tier) {
     });
   }
 
-  if (toggleBackgroundInput) {
-    toggleBackgroundInput.addEventListener("change", (event) => {
-      state.backgroundMode = event.target.checked ? "wallpaper" : "transparent";
-      saveBackgroundMode();
-      applyBoardVisualSettings();
-    });
-  }
 
   document.addEventListener("wheel", (event) => {
     if (state.draggingLibrary || state.draggingPlaced) {
