@@ -6,8 +6,8 @@
   <title>Конструктор стратегий</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
-<body>
-  <div class="page-shell">
+<body class="strategy-builder-page">
+  <div class="page-shell page-shell-wide">
     <header class="site-header">
       <a class="brand-mark" href="./index.html">Battlegrounds Hub</a>
       <nav class="site-nav" aria-label="Основная навигация">
@@ -26,7 +26,7 @@
           <p class="eyebrow">Strategy Builder</p>
           <h1 class="builder-title">Конструктор стратегий</h1>
           <p class="hero-copy">
-            Перетаскивай карты на полотно, двигай их внутри композиции и скачивай итоговую стратегию
+            Собирай стратегии из существ и заклинаний, перетаскивай их на полотно и экспортируй итоговую схему
             с прозрачным фоном.
           </p>
         </div>
@@ -34,10 +34,19 @@
         <div class="builder-controls">
           <label class="control-field">
             <span class="control-label">Поиск по картам</span>
-            <input id="builder-search" class="text-input" type="search" placeholder="Например, пираты, мурлок, предсмертный хрип">
+            <input id="builder-search" class="text-input" type="search" placeholder="Например, мурлок, заклинание, божественный щит">
           </label>
 
           <div class="builder-filter-row">
+            <label class="control-field">
+              <span class="control-label">Источник</span>
+              <select id="builder-source" class="select-input">
+                <option value="ALL">Все карты</option>
+                <option value="MINION">Существа</option>
+                <option value="SPELL">Заклинания</option>
+              </select>
+            </label>
+
             <label class="control-field">
               <span class="control-label">Тип существа</span>
               <select id="builder-race" class="select-input">
@@ -49,13 +58,15 @@
                 <option value="ELEMENTAL">Элементали</option>
                 <option value="MECHANICAL">Механизмы</option>
                 <option value="MURLOC">Мурлоки</option>
-                <option value="NAGA">Нага</option>
+                <option value="NAGA">Наги</option>
                 <option value="PIRATE">Пираты</option>
                 <option value="QUILBOAR">Свинобразы</option>
                 <option value="UNDEAD">Нежить</option>
               </select>
             </label>
+          </div>
 
+          <div class="builder-filter-row builder-filter-row-secondary">
             <label class="control-field">
               <span class="control-label">Таверна</span>
               <select id="builder-level" class="select-input">
@@ -85,7 +96,7 @@
       <section class="builder-canvas-panel">
         <div class="builder-canvas-head">
           <div>
-            <p class="eyebrow">Transparent Board</p>
+            <p class="eyebrow">Wide Workspace</p>
             <h2 class="panel-title">Полотно стратегии</h2>
           </div>
           <div id="builder-counter" class="filter-caption">0 карт на полотне</div>
@@ -93,7 +104,7 @@
 
         <div id="strategy-board" class="strategy-board">
           <div class="strategy-board-hint">
-            Перетащи сюда 5-6 карт из библиотеки, чтобы собрать стратегию
+            Перетащи сюда существ и заклинания из библиотеки, чтобы быстро собрать стратегию
           </div>
         </div>
       </section>

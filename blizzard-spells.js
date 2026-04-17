@@ -19,12 +19,12 @@
 
   function matchesFilter(card) {
     switch (state.filter) {
-      case "QUEST":
-        return card.battlegrounds.quest;
-      case "REWARD":
-        return card.battlegrounds.reward;
-      case "HERO":
-        return card.battlegrounds.hero;
+      case "TIER_LOW":
+        return Number(card.tier || 0) <= 2;
+      case "TIER_MID":
+        return Number(card.tier || 0) >= 3 && Number(card.tier || 0) <= 4;
+      case "TIER_HIGH":
+        return Number(card.tier || 0) >= 5;
       case "DUOS":
         return card.battlegrounds.duosOnly;
       case "SOLOS":
@@ -32,6 +32,22 @@
       default:
         return true;
     }
+  }
+
+  function createMetaPills(card) {
+    const pills = [
+      `Таверна ${card.tier || "?"}`,
+      `Мана ${card.manaCost ?? 0}`
+    ];
+
+    if (card.battlegrounds.duosOnly) {
+      pills.push("Только дуо");
+    }
+    if (card.battlegrounds.solosOnly) {
+      pills.push("Только соло");
+    }
+
+    return pills;
   }
 
   function render() {
@@ -55,19 +71,17 @@
       const article = document.createElement("article");
       article.className = "spell-card";
 
-      const metaPills = [];
-      if (card.battlegrounds.quest) metaPills.push("Задание");
-      if (card.battlegrounds.reward) metaPills.push("Награда");
-      if (card.battlegrounds.hero) metaPills.push("Герой");
-      if (card.battlegrounds.duosOnly) metaPills.push("Только дуо");
-      if (card.battlegrounds.solosOnly) metaPills.push("Только соло");
-      metaPills.push(`Мана ${card.manaCost}`);
-
       article.innerHTML = `
-        <img class="spell-art" src="${card.image}" alt="${card.name}" loading="lazy">
-        <h3 class="spell-name">${card.name}</h3>
-        <div class="spell-meta">${metaPills.map((pill) => `<span class="meta-pill">${pill}</span>`).join("")}</div>
-        <div class="spell-text">${stripHtml(card.text) || "Описание отсутствует."}</div>
+        <div class="spell-card-media">
+          <img class="spell-art" src="${card.image}" alt="${card.name}" loading="lazy" decoding="async">
+        </div>
+        <div class="spell-card-body">
+          <div class="spell-meta">
+            ${createMetaPills(card).map((pill) => `<span class="meta-pill">${pill}</span>`).join("")}
+          </div>
+          <h3 class="spell-name">${card.name}</h3>
+          <div class="spell-text">${stripHtml(card.text) || "Описание отсутствует."}</div>
+        </div>
       `;
 
       grid.append(article);
@@ -88,7 +102,7 @@
 
       const payload = await response.json();
       state.cards = payload.cards || [];
-      status.textContent = `Источник: ${payload.source}. Импортировано ${state.cards.length} заклинаний.`;
+      status.textContent = `Источник: ${payload.source}. Импортировано ${payload.total || state.cards.length} заклинаний.`;
       render();
     } catch (error) {
       status.textContent = "Не удалось загрузить заклинания из Blizzard API.";

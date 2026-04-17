@@ -91,6 +91,10 @@ a {
   padding: 24px 0 72px;
 }
 
+.page-shell-wide {
+  width: min(1720px, calc(100vw - 24px));
+}
+
 .site-header {
   position: sticky;
   top: 12px;
@@ -600,8 +604,8 @@ h1 {
 
 .builder-layout {
   display: grid;
-  grid-template-columns: minmax(360px, 460px) minmax(0, 1fr);
-  gap: 22px;
+  grid-template-columns: minmax(340px, 420px) minmax(0, 1fr);
+  gap: 18px;
 }
 
 .hero-tier-layout {
@@ -626,6 +630,11 @@ h1 {
   padding: 22px;
 }
 
+.strategy-builder-page .builder-sidebar,
+.strategy-builder-page .builder-canvas-panel {
+  min-height: calc(100vh - 142px);
+}
+
 .builder-title {
   margin: 0;
   font-size: clamp(2rem, 3vw, 3rem);
@@ -643,14 +652,18 @@ h1 {
   margin-top: 14px;
 }
 
+.builder-filter-row-secondary {
+  grid-template-columns: 1fr;
+}
+
 .builder-toolbar {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .builder-library {
   display: grid;
-  gap: 10px;
-  max-height: 72vh;
+  gap: 12px;
+  max-height: calc(100vh - 420px);
   margin-top: 16px;
   padding-right: 6px;
   overflow: auto;
@@ -786,20 +799,24 @@ h1 {
 
 .spells-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
   margin-top: 20px;
 }
 
 .spell-card {
   overflow: hidden;
-  display: grid;
-  gap: 10px;
-  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
   border: 1px solid var(--panel-border);
-  border-radius: 22px;
-  background: rgba(10, 18, 31, 0.82);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(31, 42, 63, 0.96), rgba(7, 13, 24, 0.98));
   box-shadow: var(--shadow);
+}
+
+.spell-card-media {
+  padding: 14px 14px 0;
 }
 
 .spell-art {
@@ -807,13 +824,19 @@ h1 {
   aspect-ratio: 0.715;
   object-fit: contain;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.spell-card-body {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px 16px;
 }
 
 .spell-name {
   margin: 0;
-  font-size: 1rem;
-  line-height: 1.15;
+  font-size: 1.08rem;
+  line-height: 1.18;
 }
 
 .spell-text {
@@ -840,21 +863,36 @@ h1 {
 
 .builder-card {
   display: grid;
-  grid-template-columns: 88px minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
   width: 100%;
-  padding: 10px;
+  padding: 12px;
   color: var(--text);
   text-align: left;
   border: 1px solid var(--panel-border);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.04);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(23, 34, 55, 0.96), rgba(8, 14, 25, 0.98));
   cursor: grab;
 }
 
+.builder-card:hover {
+  transform: translateY(-2px);
+}
+
+.builder-card.is-spell {
+  background:
+    radial-gradient(circle at top left, rgba(121, 183, 255, 0.14), transparent 28%),
+    linear-gradient(180deg, rgba(18, 32, 57, 0.98), rgba(8, 14, 25, 0.98));
+}
+
+.builder-card-media {
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
 .builder-card-art {
-  width: 88px;
+  width: 100%;
   aspect-ratio: 0.715;
   object-fit: contain;
 }
@@ -862,6 +900,30 @@ h1 {
 .builder-card-copy {
   display: grid;
   gap: 6px;
+}
+
+.builder-card-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.builder-card-badge,
+.builder-card-tier {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.builder-card-badge {
+  color: var(--gold-strong);
 }
 
 .builder-card-copy strong {
@@ -887,12 +949,14 @@ h1 {
 
 .strategy-board {
   position: relative;
-  min-height: 72vh;
+  min-height: calc(100vh - 240px);
   margin-top: 18px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 28px;
-  background: transparent;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01)),
+    radial-gradient(circle at top left, rgba(219, 192, 122, 0.08), transparent 22%);
 }
 
 .strategy-board-hint {
@@ -1050,6 +1114,10 @@ h1 {
   .spells-grid {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
+
+  .page-shell-wide {
+    width: min(100vw - 20px, 1540px);
+  }
 }
 
 @media (max-width: 1024px) {
@@ -1085,6 +1153,19 @@ h1 {
   .library-card-grid,
   .spells-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .strategy-builder-page .builder-sidebar,
+  .strategy-builder-page .builder-canvas-panel {
+    min-height: 0;
+  }
+
+  .builder-library {
+    max-height: 60vh;
+  }
+
+  .strategy-board {
+    min-height: 68vh;
   }
 }
 

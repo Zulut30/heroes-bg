@@ -25,7 +25,8 @@
         <p class="eyebrow">Blizzard Hearthstone API</p>
         <h1>Заклинания Полей сражений</h1>
         <p class="hero-copy">
-          Эта страница загружает Battlegrounds-заклинания напрямую через серверный прокси к Blizzard API, чтобы мы могли дальше подключать к сайту актуальные метаданные, сеты, школы заклинаний и другие сущности.
+          Здесь показаны актуальные Tavern Spells из Blizzard API. Карточки собраны в том же визуальном стиле,
+          что и библиотека существ, чтобы их было проще просматривать и сравнивать.
         </p>
       </section>
 
@@ -41,16 +42,16 @@
         <div class="api-toolbar">
           <label class="control-field">
             <span class="control-label">Поиск</span>
-            <input id="spells-search" class="text-input" type="search" placeholder="Например, задание, награда, золото">
+            <input id="spells-search" class="text-input" type="search" placeholder="Например, золото, таверна, божественный щит">
           </label>
 
           <label class="control-field">
-            <span class="control-label">Тип</span>
+            <span class="control-label">Срез</span>
             <select id="spells-filter" class="select-input">
               <option value="ALL">Все заклинания</option>
-              <option value="QUEST">Задания</option>
-              <option value="REWARD">Награды</option>
-              <option value="HERO">Связанные с героем</option>
+              <option value="TIER_LOW">Таверна 1-2</option>
+              <option value="TIER_MID">Таверна 3-4</option>
+              <option value="TIER_HIGH">Таверна 5-7</option>
               <option value="DUOS">Только дуо</option>
               <option value="SOLOS">Только соло</option>
             </select>

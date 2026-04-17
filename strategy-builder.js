@@ -1,5 +1,6 @@
 (function () {
   const searchInput = document.getElementById("builder-search");
+  const sourceSelect = document.getElementById("builder-source");
   const raceSelect = document.getElementById("builder-race");
   const levelSelect = document.getElementById("builder-level");
   const clearButton = document.getElementById("builder-clear");
@@ -13,10 +14,10 @@
   const BOARD_COLUMNS = 5;
   const BOARD_ROWS = 3;
   const BOARD_SLOT_COUNT = BOARD_COLUMNS * BOARD_ROWS;
-  const EXPORT_WIDTH = 2200;
-  const EXPORT_HEIGHT = 1320;
-  const SLOT_CARD_WIDTH = 0.158;
-  const BOARD_INSET_X = 0.035;
+  const EXPORT_WIDTH = 2600;
+  const EXPORT_HEIGHT = 1480;
+  const SLOT_CARD_WIDTH = 0.152;
+  const BOARD_INSET_X = 0.04;
   const BOARD_INSET_Y = 0.11;
 
   const raceNames = {
@@ -28,7 +29,7 @@
     ELEMENTAL: "Элементали",
     MECHANICAL: "Механизмы",
     MURLOC: "Мурлоки",
-    NAGA: "Нага",
+    NAGA: "Наги",
     PIRATE: "Пираты",
     QUILBOAR: "Свинобразы",
     UNDEAD: "Нежить"
@@ -39,20 +40,32 @@
     filtered: [],
     placed: [],
     search: "",
+    source: "ALL",
     race: "ALL",
     level: "ALL",
     activeId: null
   };
 
   function getCardArtUrl(card, size = "512x") {
+    if (card?.source === "SPELL") {
+      return card?.image || card?.artUrl || "";
+    }
+
     if (!card?.id) {
       return card?.artUrl || "";
     }
+
     return `/api/card-art?id=${encodeURIComponent(card.id)}&locale=ruRU&size=${encodeURIComponent(size)}`;
   }
 
   function normalize(value) {
     return String(value || "").toLowerCase().trim();
+  }
+
+  function stripHtml(value) {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = value || "";
+    return (tmp.textContent || tmp.innerText || "").replace(/\s+/g, " ").trim();
   }
 
   function setStatus(text) {
@@ -69,6 +82,7 @@
     const row = Math.floor(slot / BOARD_COLUMNS);
     const usableWidth = 1 - BOARD_INSET_X * 2;
     const usableHeight = 1 - BOARD_INSET_Y * 2;
+
     return {
       x: BOARD_INSET_X + usableWidth * ((column + 0.5) / BOARD_COLUMNS),
       y: BOARD_INSET_Y + usableHeight * ((row + 0.5) / BOARD_ROWS)
@@ -86,56 +100,87 @@
 
   function getFirstFreeSlot() {
     const occupied = new Set(state.placed.map((card) => card.slot));
+
     for (let slot = 0; slot < BOARD_SLOT_COUNT; slot += 1) {
       if (!occupied.has(slot)) {
         return slot;
       }
     }
+
     return null;
   }
 
-  function matchesFilters(card) {
-    const searchOk = !state.search || normalize([
+  function getCardSearchText(card) {
+    return [
       card.name,
       card.text,
+      card.source === "SPELL" ? "заклинание tavern spell" : "существо minion",
       (card.races || []).join(" "),
-      `таверна ${card.techLevel}`
-    ].join(" ")).includes(normalize(state.search));
+      `таверна ${card.techLevel || ""}`,
+      `мана ${card.manaCost || ""}`
+    ].join(" ");
+  }
+
+  function matchesFilters(card) {
+    const searchOk = !state.search || normalize(getCardSearchText(card)).includes(normalize(state.search));
+    const sourceOk = state.source === "ALL" || card.source === state.source;
 
     const raceOk = state.race === "ALL"
       ? true
-      : state.race === "NONE"
-        ? !(card.races && card.races.length)
-        : (card.races || []).includes(state.race);
+      : card.source === "SPELL"
+        ? false
+        : state.race === "NONE"
+          ? !(card.races && card.races.length)
+          : (card.races || []).includes(state.race);
 
     const levelOk = state.level === "ALL" ? true : String(card.techLevel || "") === state.level;
-    return searchOk && raceOk && levelOk;
+
+    return searchOk && sourceOk && raceOk && levelOk;
+  }
+
+  function getLibraryMeta(card) {
+    if (card.source === "SPELL") {
+      return `Заклинание • Таверна ${card.techLevel || "?"} • Мана ${card.manaCost ?? 0}`;
+    }
+
+    const raceLabel = raceNames[(card.races || [])[0]] || "Без типа";
+    return `${raceLabel} • Таверна ${card.techLevel || "?"}`;
   }
 
   function renderLibrary() {
     libraryEl.replaceChildren();
+
     if (!state.filtered.length) {
       setStatus("По текущим фильтрам ничего не найдено.");
       return;
     }
 
-    setStatus(`Доступно ${state.filtered.length} карт для перетаскивания.`);
+    const minionCount = state.filtered.filter((card) => card.source === "MINION").length;
+    const spellCount = state.filtered.filter((card) => card.source === "SPELL").length;
+    setStatus(`Доступно ${state.filtered.length} карт: ${minionCount} существ и ${spellCount} заклинаний.`);
 
     state.filtered.forEach((card) => {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "builder-card";
+      button.className = `builder-card${card.source === "SPELL" ? " is-spell" : ""}`;
       button.draggable = true;
       button.innerHTML = `
-        <img class="builder-card-art" src="${getCardArtUrl(card, "256x")}" alt="${card.name}" loading="lazy" decoding="async">
+        <div class="builder-card-media">
+          <img class="builder-card-art" src="${getCardArtUrl(card, "256x")}" alt="${card.name}" loading="lazy" decoding="async">
+        </div>
         <div class="builder-card-copy">
+          <div class="builder-card-topline">
+            <span class="builder-card-badge">${card.source === "SPELL" ? "Заклинание" : "Существо"}</span>
+            <span class="builder-card-tier">Т${card.techLevel || "?"}</span>
+          </div>
           <strong>${card.name}</strong>
-          <span>${raceNames[(card.races || [])[0]] || "Без типа"} • Таверна ${card.techLevel || "?"}</span>
+          <span>${getLibraryMeta(card)}</span>
         </div>
       `;
 
       button.addEventListener("dragstart", (event) => {
-        event.dataTransfer.setData("text/plain", card.id);
+        event.dataTransfer.effectAllowed = "copy";
+        event.dataTransfer.setData("text/plain", String(card.id));
       });
 
       button.addEventListener("click", () => addCardToBoard(card));
@@ -145,6 +190,7 @@
 
   function addCardToBoard(card, preferredSlot = null) {
     const slot = preferredSlot ?? getFirstFreeSlot();
+
     if (slot === null) {
       setStatus("Все 15 слотов заняты. Удали карту или переставь существующую.");
       return;
@@ -154,9 +200,11 @@
       uid: crypto.randomUUID(),
       id: card.id,
       name: card.name,
+      source: card.source,
       artUrl: getCardArtUrl(card, "512x"),
       slot
     };
+
     state.placed.push(placedCard);
     state.activeId = placedCard.uid;
     renderBoard();
@@ -164,9 +212,11 @@
 
   function removePlacedCard(uid) {
     state.placed = state.placed.filter((card) => card.uid !== uid);
+
     if (state.activeId === uid) {
       state.activeId = state.placed[0]?.uid || null;
     }
+
     renderBoard();
   }
 
@@ -195,6 +245,7 @@
       }
       return card;
     });
+
     renderBoard();
   }
 
@@ -203,7 +254,8 @@
 
     const hint = document.createElement("div");
     hint.className = "strategy-board-hint";
-    hint.textContent = "Перетащи карты в невидимую сетку 5 × 3 и собери стратегию";
+    hint.textContent = "Перетащи карты в широкую сетку 5 × 3 и собери стратегию из существ и заклинаний.";
+
     if (!state.placed.length) {
       boardEl.append(hint);
     }
@@ -293,17 +345,59 @@
     window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1200);
   }
 
+  function normalizeMinionCard(card) {
+    return {
+      id: String(card.id),
+      name: card.name,
+      text: card.text || "",
+      techLevel: card.techLevel || 0,
+      races: card.races || [],
+      manaCost: 0,
+      source: "MINION",
+      artUrl: card.artUrl || ""
+    };
+  }
+
+  function normalizeSpellCard(card) {
+    return {
+      id: String(card.id),
+      name: card.name,
+      text: stripHtml(card.text || ""),
+      techLevel: card.tier || 0,
+      races: [],
+      manaCost: card.manaCost ?? 0,
+      source: "SPELL",
+      image: card.image || card.cropImage || ""
+    };
+  }
+
   async function bootstrap() {
     try {
-      const response = await fetch("./bgs-library.json", { cache: "force-cache" });
-      const payload = await response.json();
-      state.cards = Array.isArray(payload.cards) ? payload.cards : [];
-      state.filtered = state.cards;
-      renderLibrary();
+      const [libraryResponse, spellsResponse] = await Promise.all([
+        fetch("./bgs-library.json", { cache: "force-cache" }),
+        fetch("./api/battlegrounds-spells?locale=ru_RU&pageSize=200", {
+          headers: { Accept: "application/json" }
+        })
+      ]);
+
+      if (!libraryResponse.ok) {
+        throw new Error(`Library HTTP ${libraryResponse.status}`);
+      }
+      if (!spellsResponse.ok) {
+        throw new Error(`Spells HTTP ${spellsResponse.status}`);
+      }
+
+      const libraryPayload = await libraryResponse.json();
+      const spellsPayload = await spellsResponse.json();
+      const minions = Array.isArray(libraryPayload.cards) ? libraryPayload.cards.map(normalizeMinionCard) : [];
+      const spells = Array.isArray(spellsPayload.cards) ? spellsPayload.cards.map(normalizeSpellCard) : [];
+
+      state.cards = [...minions, ...spells];
+      updateLibrary();
       renderBoard();
     } catch (error) {
       console.error(error);
-      setStatus("Не удалось загрузить библиотеку карт.");
+      setStatus("Не удалось загрузить библиотеку карт и заклинаний.");
     }
   }
 
@@ -319,7 +413,7 @@
   boardEl.addEventListener("drop", (event) => {
     event.preventDefault();
     const cardId = event.dataTransfer.getData("text/plain");
-    const card = state.cards.find((item) => item.id === cardId);
+    const card = state.cards.find((item) => String(item.id) === String(cardId));
     if (!card) {
       return;
     }
@@ -331,6 +425,11 @@
     state.search = event.target.value;
     updateLibrary();
   }, 120));
+
+  sourceSelect.addEventListener("change", (event) => {
+    state.source = event.target.value;
+    updateLibrary();
+  });
 
   raceSelect.addEventListener("change", (event) => {
     state.race = event.target.value;
