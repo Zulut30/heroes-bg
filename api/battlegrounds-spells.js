@@ -1,5 +1,10 @@
 const { fetchBlizzardJson, normalizeLocale, sendJson } = require("./_blizzard");
 
+function buildRemoteImageProxyUrl(imageUrl) {
+  const normalized = String(imageUrl || "").trim();
+  return normalized ? `/api/remote-image?src=${encodeURIComponent(normalized)}` : "";
+}
+
 async function fetchAllBattlegroundCards(locale) {
   const cards = [];
   let page = 1;
@@ -38,29 +43,36 @@ module.exports = async function handler(req, res) {
           || String(left.name || "").localeCompare(String(right.name || ""), sortLocale);
       })
       .slice(0, pageSize)
-      .map((card) => ({
-        id: card.id,
-        slug: card.slug,
-        name: card.name,
-        text: card.text || "",
-        flavorText: card.flavorText || "",
-        manaCost: card.manaCost ?? 0,
-        image: card.battlegrounds.image || card.image || card.cropImage || "",
-        imageGold: card.battlegrounds.imageGold || card.imageGold || "",
-        cropImage: card.cropImage || "",
-        setId: card.cardSetId || null,
-        typeId: card.cardTypeId || null,
-        spellSchoolId: card.spellSchoolId || null,
-        classId: card.classId || null,
-        tier: card.battlegrounds.tier ?? null,
-        battlegrounds: {
-          hero: Boolean(card.battlegrounds.hero),
-          quest: Boolean(card.battlegrounds.quest),
-          reward: Boolean(card.battlegrounds.reward),
-          duosOnly: Boolean(card.battlegrounds.duosOnly),
-          solosOnly: Boolean(card.battlegrounds.solosOnly)
-        }
-      }));
+      .map((card) => {
+        const upstreamImage = card.battlegrounds.image || card.image || card.cropImage || "";
+        const upstreamImageGold = card.battlegrounds.imageGold || card.imageGold || "";
+        const upstreamCropImage = card.cropImage || upstreamImage;
+
+        return {
+          id: card.id,
+          slug: card.slug,
+          name: card.name,
+          text: card.text || "",
+          flavorText: card.flavorText || "",
+          manaCost: card.manaCost ?? 0,
+          image: buildRemoteImageProxyUrl(upstreamImage),
+          imageGold: buildRemoteImageProxyUrl(upstreamImageGold),
+          cropImage: buildRemoteImageProxyUrl(upstreamCropImage),
+          imageOriginal: upstreamImage,
+          setId: card.cardSetId || null,
+          typeId: card.cardTypeId || null,
+          spellSchoolId: card.spellSchoolId || null,
+          classId: card.classId || null,
+          tier: card.battlegrounds.tier ?? null,
+          battlegrounds: {
+            hero: Boolean(card.battlegrounds.hero),
+            quest: Boolean(card.battlegrounds.quest),
+            reward: Boolean(card.battlegrounds.reward),
+            duosOnly: Boolean(card.battlegrounds.duosOnly),
+            solosOnly: Boolean(card.battlegrounds.solosOnly)
+          }
+        };
+      });
 
     sendJson(res, 200, {
       source: "Blizzard Hearthstone API",

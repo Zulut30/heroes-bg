@@ -58,7 +58,7 @@
   };
 
   function getCardArtUrl(card, size = "512x") {
-    if (card?.source === "SPELL" || card?.source === "HERO" || card?.source === "ACCESSORY") {
+    if (card?.source === "HERO" || card?.source === "ACCESSORY") {
       return card?.image || card?.artUrl || "";
     }
 
