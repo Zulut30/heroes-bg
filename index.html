@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Конструктор БГ</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="preload" as="image" href="./wallpaper.jpg" fetchpriority="high">
+  <link rel="preload" as="font" type="font/otf" href="./font.otf" crossorigin>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body class="landing-page">
@@ -62,11 +64,21 @@
           <div class="landing-glow landing-glow-a"></div>
           <div class="landing-glow landing-glow-b"></div>
           <div class="landing-card-stack">
-            <span class="landing-ghost-card landing-ghost-card-1"></span>
-            <span class="landing-ghost-card landing-ghost-card-2"></span>
-            <span class="landing-ghost-card landing-ghost-card-3"></span>
-            <span class="landing-ghost-card landing-ghost-card-4"></span>
-            <span class="landing-ghost-card landing-ghost-card-5"></span>
+            <span class="landing-card landing-card-1" data-race="DRAGON">
+              <img src="/api/card-art?id=BGS_041&amp;locale=ruRU&amp;size=256x" alt="" loading="eager" decoding="async" fetchpriority="low">
+            </span>
+            <span class="landing-card landing-card-2" data-race="DEMON">
+              <img src="/api/card-art?id=BG26_523&amp;locale=ruRU&amp;size=256x" alt="" loading="eager" decoding="async" fetchpriority="low">
+            </span>
+            <span class="landing-card landing-card-3" data-race="BEAST">
+              <img src="/api/card-art?id=BG29_808&amp;locale=ruRU&amp;size=256x" alt="" loading="eager" decoding="async" fetchpriority="low">
+            </span>
+            <span class="landing-card landing-card-4" data-race="MECHANICAL">
+              <img src="/api/card-art?id=BG33_371&amp;locale=ruRU&amp;size=256x" alt="" loading="eager" decoding="async" fetchpriority="low">
+            </span>
+            <span class="landing-card landing-card-5" data-race="UNDEAD">
+              <img src="/api/card-art?id=BG31_835&amp;locale=ruRU&amp;size=256x" alt="" loading="eager" decoding="async" fetchpriority="low">
+            </span>
           </div>
         </div>
       </section>
