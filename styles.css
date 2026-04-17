@@ -1119,6 +1119,28 @@ h1 {
   margin-top: 10px;
 }
 
+.board-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
+  background: rgba(11, 20, 37, 0.72);
+}
+
+.board-toolbar .secondary-button,
+.board-toolbar .download-button {
+  padding: 10px 18px;
+  font-size: 0.9rem;
+}
+
+.board-toolbar .builder-checkbox {
+  margin-left: auto;
+}
+
 .builder-toolbar-options .secondary-button.is-active {
   background: rgba(219, 192, 122, 0.22);
   color: var(--text);

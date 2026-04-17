@@ -56,19 +56,6 @@
             <div id="builder-accessory-filters" class="chip-row" aria-label="Фильтр по размеру аксессуара"></div>
           </div>
 
-          <div class="builder-toolbar">
-            <button id="builder-clear" class="secondary-button" type="button">Очистить полотно</button>
-            <button id="builder-export-png" class="download-button" type="button">Скачать PNG</button>
-            <button id="builder-export-webp" class="secondary-button" type="button">Скачать WebP</button>
-          </div>
-
-          <div class="builder-toolbar builder-toolbar-options">
-            <button id="builder-toggle-grid" class="secondary-button" type="button" aria-pressed="false">Показать сетку</button>
-            <label class="builder-checkbox">
-              <input id="builder-toggle-background" type="checkbox">
-              <span>Игровой фон</span>
-            </label>
-          </div>
         </div>
 
         <div id="builder-status" class="library-status">Загружаю карты...</div>
@@ -77,11 +64,22 @@
 
       <section class="builder-canvas-panel builder-canvas-panel-compact">
         <div class="builder-canvas-head">
-          <div>
+          <div class="builder-canvas-title">
             <p class="eyebrow">Board</p>
             <h2 class="panel-title">Полотно стратегии</h2>
           </div>
           <div id="builder-counter" class="filter-caption">0 карт на полотне</div>
+        </div>
+
+        <div class="board-toolbar">
+          <button id="builder-clear" class="secondary-button" type="button">Очистить полотно</button>
+          <button id="builder-export-png" class="download-button" type="button">Скачать PNG</button>
+          <button id="builder-export-webp" class="secondary-button" type="button">Скачать WebP</button>
+          <button id="builder-toggle-grid" class="secondary-button" type="button" aria-pressed="false">Показать сетку</button>
+          <label class="builder-checkbox">
+            <input id="builder-toggle-background" type="checkbox">
+            <span>Игровой фон</span>
+          </label>
         </div>
 
         <div class="quick-slots-panel" aria-label="Быстрые слоты">
