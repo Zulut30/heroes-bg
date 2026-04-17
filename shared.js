@@ -235,6 +235,11 @@
       const column = index % columns;
       const x = padding + column * (cardWidth + gap);
       const y = headerHeight + row * (cardHeight + gap);
+
+      if (card.empty) {
+        continue;
+      }
+
       const imageSource = card.exportImage || card.image || card.artUrl;
       const img = await loadImageFromSource(imageSource);
 

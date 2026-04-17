@@ -21,7 +21,6 @@
   const EXPORT_BOTTOM_PADDING = 70;
   const EXPORT_COLUMN_GAP = 82;
   const EXPORT_ROW_GAP = 94;
-  const EMPTY_EXPORT_PIXEL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9sot8JkAAAAASUVORK5CYII=";
   const SLOT_CARD_WIDTH = 0.142;
   const BOARD_INSET_X = 0.048;
   const BOARD_INSET_Y = 0.08;
@@ -461,8 +460,7 @@
     const compactSlots = Array.from({ length: exportRows * BOARD_COLUMNS }, () => ({
       id: `empty-${crypto.randomUUID()}`,
       name: "",
-      exportImage: EMPTY_EXPORT_PIXEL,
-      image: EMPTY_EXPORT_PIXEL
+      empty: true
     }));
 
     state.placed.forEach((card) => {
