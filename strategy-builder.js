@@ -21,6 +21,7 @@
   const EXPORT_BOTTOM_PADDING = 70;
   const EXPORT_COLUMN_GAP = 82;
   const EXPORT_ROW_GAP = 94;
+  const EMPTY_EXPORT_PIXEL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9sot8JkAAAAASUVORK5CYII=";
   const SLOT_CARD_WIDTH = 0.142;
   const BOARD_INSET_X = 0.048;
   const BOARD_INSET_Y = 0.08;
@@ -429,6 +430,62 @@
     window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1200);
   }
 
+  async function exportBoardStable(fileType) {
+    if (!state.placed.length) {
+      setStatus("РЎРЅР°С‡Р°Р»Р° РґРѕР±Р°РІСЊ С…РѕС‚СЏ Р±С‹ РѕРґРЅСѓ РєР°СЂС‚Сѓ РЅР° РїРѕР»РѕС‚РЅРѕ.");
+      return;
+    }
+
+    const occupiedRows = [...new Set(state.placed.map((card) => Math.floor(card.slot / BOARD_COLUMNS)))].sort((a, b) => a - b);
+    const rowMap = new Map(occupiedRows.map((row, index) => [row, index]));
+    const exportRows = Math.max(1, occupiedRows.length);
+    const cardWidth = (EXPORT_WIDTH - EXPORT_SIDE_PADDING * 2 - EXPORT_COLUMN_GAP * (BOARD_COLUMNS - 1)) / BOARD_COLUMNS;
+    const compactSlots = Array.from({ length: exportRows * BOARD_COLUMNS }, () => ({
+      id: `empty-${crypto.randomUUID()}`,
+      name: "",
+      exportImage: EMPTY_EXPORT_PIXEL,
+      image: EMPTY_EXPORT_PIXEL
+    }));
+
+    state.placed.forEach((card) => {
+      const originalRow = Math.floor(card.slot / BOARD_COLUMNS);
+      const compactRow = rowMap.get(originalRow) ?? 0;
+      const column = card.slot % BOARD_COLUMNS;
+      compactSlots[compactRow * BOARD_COLUMNS + column] = {
+        ...card,
+        exportImage: card.artUrl,
+        image: card.artUrl
+      };
+    });
+
+    const mimeType = fileType === "png" ? "image/png" : "image/webp";
+    const extension = fileType === "png" ? "png" : "webp";
+
+    await window.Shared.exportCardSheet(compactSlots, {
+      fileBaseName: "strategy-board",
+      columns: BOARD_COLUMNS,
+      gap: EXPORT_COLUMN_GAP,
+      padding: EXPORT_SIDE_PADDING,
+      cardWidth,
+      artHeight: Math.round(cardWidth * 1.7),
+      renderScale: 1,
+      showHeader: false,
+      showText: false,
+      showMeta: false,
+      showCardBackground: false,
+      background: "transparent",
+      headerHeight: EXPORT_TOP_PADDING + EXPORT_BOTTOM_PADDING,
+      maxWidthOrHeight: fileType === "png" ? EXPORT_WIDTH : 3200,
+      maxSizeMB: 1.95,
+      initialQuality: 0.96,
+      outputQuality: fileType === "png" ? 1 : 0.98,
+      outputType: mimeType,
+      compress: fileType !== "png"
+    });
+
+    setStatus(`Стратегия сохранена в формате ${extension.toUpperCase()}.`);
+  }
+
   function normalizeHeroCard(hero, tier) {
     return {
       id: `hero-${slugify(hero.name)}`,
@@ -575,8 +632,8 @@
     renderBoard();
   });
 
-  exportPngButton.addEventListener("click", () => exportBoard("png"));
-  exportWebpButton.addEventListener("click", () => exportBoard("webp"));
+  exportPngButton.addEventListener("click", () => exportBoardStable("png"));
+  exportWebpButton.addEventListener("click", () => exportBoardStable("webp"));
 
   document.addEventListener("wheel", (event) => {
     if (state.draggingLibrary || state.draggingPlaced) {

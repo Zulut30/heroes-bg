@@ -287,17 +287,22 @@
     const finalCanvas = await maybeDownscaleCanvas(canvas, {
       maxWidthOrHeight: options.maxWidthOrHeight
     });
-    const rawBlob = await canvasToBlob(finalCanvas, "image/webp", options.outputQuality || 0.97);
-    const resultBlob = await compressForWordPress(rawBlob, fileBaseName, {
-      maxSizeMB: options.maxSizeMB,
-      maxWidthOrHeight: options.maxWidthOrHeight,
-      initialQuality: options.initialQuality
-    });
+    const outputType = options.outputType || "image/webp";
+    const outputQuality = options.outputQuality || 0.97;
+    const extension = outputType === "image/png" ? "png" : "webp";
+    const rawBlob = await canvasToBlob(finalCanvas, outputType, outputQuality);
+    const resultBlob = outputType === "image/webp" && options.compress !== false
+      ? await compressForWordPress(rawBlob, fileBaseName, {
+        maxSizeMB: options.maxSizeMB,
+        maxWidthOrHeight: options.maxWidthOrHeight,
+        initialQuality: options.initialQuality
+      })
+      : new File([rawBlob], `${fileBaseName}.${extension}`, { type: outputType });
     const blobUrl = URL.createObjectURL(resultBlob);
     const link = document.createElement("a");
 
     link.href = blobUrl;
-    link.download = resultBlob.name || `${fileBaseName}.webp`;
+    link.download = resultBlob.name || `${fileBaseName}.${extension}`;
     document.body.append(link);
     link.click();
     link.remove();
