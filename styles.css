@@ -1112,6 +1112,185 @@ h1 {
   pointer-events: none;
 }
 
+.builder-toolbar-options {
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.builder-toolbar-options .secondary-button.is-active {
+  background: rgba(219, 192, 122, 0.22);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px rgba(219, 192, 122, 0.35);
+}
+
+.builder-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.builder-checkbox input {
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+
+.builder-checkbox:hover {
+  color: var(--text);
+}
+
+.strategy-board-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  background-image:
+    linear-gradient(to right, rgba(219, 192, 122, 0.35) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(219, 192, 122, 0.35) 1px, transparent 1px);
+  background-size: 20% 33.3333%;
+  background-position: 0 0;
+  z-index: 1;
+}
+
+.strategy-board.show-grid .strategy-board-grid {
+  opacity: 1;
+}
+
+.strategy-board.has-wallpaper {
+  background: #030813;
+}
+
+.strategy-board.has-wallpaper::before {
+  content: "";
+  position: absolute;
+  inset: -40px;
+  background: url("./wallpaper.jpg") center / cover no-repeat;
+  filter: blur(14px) brightness(0.45);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.strategy-board.has-wallpaper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 8, 16, 0.35);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.strategy-board.has-wallpaper > * {
+  position: relative;
+  z-index: 2;
+}
+
+.quick-slots-panel {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
+  background: rgba(11, 20, 37, 0.72);
+}
+
+.quick-slots-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.quick-slots-hint {
+  color: var(--muted-soft);
+  font-size: 0.8rem;
+}
+
+.quick-slots-list {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 8px;
+}
+
+.quick-slot {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  border: 1px dashed rgba(219, 192, 122, 0.25);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.quick-slot.is-empty::after {
+  content: "+";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: rgba(219, 192, 122, 0.4);
+  font-size: 1.6rem;
+  font-weight: 300;
+}
+
+.quick-slot.is-filled {
+  border-style: solid;
+  border-color: rgba(219, 192, 122, 0.35);
+  background: rgba(7, 14, 26, 0.6);
+}
+
+.quick-slot.is-drop-target {
+  border-color: var(--gold);
+  background: rgba(219, 192, 122, 0.18);
+  transform: translateY(-1px);
+}
+
+.quick-slot-art {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.quick-slot-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(8, 17, 30, 0.9);
+  color: var(--text);
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.quick-slot-remove:hover {
+  background: rgba(255, 133, 126, 0.22);
+}
+
+@media (max-width: 960px) {
+  .quick-slots-list {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
 .lightbox {
   position: fixed;
   inset: 0;

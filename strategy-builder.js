@@ -7,6 +7,9 @@
   const clearButton = document.getElementById("builder-clear");
   const exportPngButton = document.getElementById("builder-export-png");
   const exportWebpButton = document.getElementById("builder-export-webp");
+  const toggleGridButton = document.getElementById("builder-toggle-grid");
+  const toggleBackgroundInput = document.getElementById("builder-toggle-background");
+  const quickSlotsEl = document.getElementById("quick-slots");
   const statusEl = document.getElementById("builder-status");
   const libraryEl = document.getElementById("builder-library");
   const boardEl = document.getElementById("strategy-board");
@@ -16,11 +19,16 @@
   const BOARD_ROWS = 3;
   const BOARD_SLOT_COUNT = BOARD_COLUMNS * BOARD_ROWS;
   const EXPORT_WIDTH = 2200;
-  const EXPORT_SIDE_PADDING = 120;
-  const EXPORT_TOP_PADDING = 48;
-  const EXPORT_BOTTOM_PADDING = 48;
-  const EXPORT_COLUMN_GAP = 82;
-  const EXPORT_ROW_GAP = 56;
+  const EXPORT_SIDE_PADDING = 60;
+  const EXPORT_TOP_PADDING = 32;
+  const EXPORT_BOTTOM_PADDING = 32;
+  const EXPORT_COLUMN_GAP = 24;
+  const EXPORT_ROW_GAP = 20;
+  const QUICK_SLOTS_COUNT = 10;
+  const QUICK_SLOTS_STORAGE_KEY = "strategy-builder-quick-slots-v1";
+  const BACKGROUND_STORAGE_KEY = "strategy-builder-background-mode-v1";
+  const WALLPAPER_BLUR_PX = 14;
+  const WALLPAPER_BRIGHTNESS = 0.45;
   const SLOT_CARD_WIDTH = 0.142;
   const BOARD_INSET_X = 0.048;
   const BOARD_INSET_Y = 0.08;
@@ -53,8 +61,62 @@
     accessorySize: "ALL",
     activeId: null,
     draggingLibrary: false,
-    draggingPlaced: false
+    draggingPlaced: false,
+    showGrid: false,
+    backgroundMode: loadBackgroundMode(),
+    quickSlots: loadQuickSlots()
   };
+
+  function loadQuickSlots() {
+    try {
+      const raw = window.localStorage.getItem(QUICK_SLOTS_STORAGE_KEY);
+      if (!raw) {
+        return new Array(QUICK_SLOTS_COUNT).fill(null);
+      }
+      const parsed = JSON.parse(raw);
+      const list = Array.isArray(parsed) ? parsed : [];
+      const normalized = new Array(QUICK_SLOTS_COUNT).fill(null);
+      for (let index = 0; index < Math.min(QUICK_SLOTS_COUNT, list.length); index += 1) {
+        const entry = list[index];
+        if (entry && entry.id && entry.source) {
+          normalized[index] = { id: String(entry.id), source: String(entry.source) };
+        }
+      }
+      return normalized;
+    } catch (error) {
+      console.warn("Не удалось прочитать быстрые слоты из localStorage.", error);
+      return new Array(QUICK_SLOTS_COUNT).fill(null);
+    }
+  }
+
+  function saveQuickSlots() {
+    try {
+      window.localStorage.setItem(QUICK_SLOTS_STORAGE_KEY, JSON.stringify(state.quickSlots));
+    } catch (error) {
+      console.warn("Не удалось сохранить быстрые слоты.", error);
+    }
+  }
+
+  function loadBackgroundMode() {
+    try {
+      const value = window.localStorage.getItem(BACKGROUND_STORAGE_KEY);
+      return value === "wallpaper" ? "wallpaper" : "transparent";
+    } catch (error) {
+      return "transparent";
+    }
+  }
+
+  function saveBackgroundMode() {
+    try {
+      window.localStorage.setItem(BACKGROUND_STORAGE_KEY, state.backgroundMode);
+    } catch (error) {
+      console.warn("Не удалось сохранить режим фона.", error);
+    }
+  }
+
+  function findCard(id, source) {
+    return state.cards.find((card) => String(card.id) === String(id) && card.source === source);
+  }
 
   function getCardArtUrl(card, size = "512x") {
     if (card?.source === "SPELL" || card?.source === "HERO" || card?.source === "ACCESSORY") {
@@ -108,6 +170,91 @@
   function syncCounter() {
     counterEl.textContent = `${state.placed.length} карт на полотне`;
     boardEl.classList.toggle("is-empty", state.placed.length === 0);
+  }
+
+  function applyBoardVisualSettings() {
+    boardEl.classList.toggle("show-grid", state.showGrid);
+    boardEl.classList.toggle("has-wallpaper", state.backgroundMode === "wallpaper");
+    if (toggleGridButton) {
+      toggleGridButton.classList.toggle("is-active", state.showGrid);
+      toggleGridButton.textContent = state.showGrid ? "Скрыть сетку" : "Показать сетку";
+      toggleGridButton.setAttribute("aria-pressed", state.showGrid ? "true" : "false");
+    }
+    if (toggleBackgroundInput) {
+      toggleBackgroundInput.checked = state.backgroundMode === "wallpaper";
+    }
+  }
+
+  function renderQuickSlots() {
+    if (!quickSlotsEl) {
+      return;
+    }
+    quickSlotsEl.replaceChildren();
+
+    for (let index = 0; index < QUICK_SLOTS_COUNT; index += 1) {
+      const entry = state.quickSlots[index];
+      const card = entry ? findCard(entry.id, entry.source) : null;
+      const slot = document.createElement("div");
+      slot.className = `quick-slot${card ? " is-filled" : " is-empty"}`;
+      slot.dataset.index = String(index);
+      slot.title = card ? `${card.name} — клик, чтобы добавить на полотно` : "Пустой быстрый слот";
+
+      if (card) {
+        const art = document.createElement("img");
+        art.className = "quick-slot-art";
+        art.src = getCardArtUrl(card, "256x");
+        art.alt = card.name;
+        art.loading = "lazy";
+        art.decoding = "async";
+        slot.append(art);
+
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "quick-slot-remove";
+        remove.setAttribute("aria-label", "Убрать из быстрых слотов");
+        remove.textContent = "×";
+        remove.addEventListener("click", (event) => {
+          event.stopPropagation();
+          state.quickSlots[index] = null;
+          saveQuickSlots();
+          renderQuickSlots();
+        });
+        slot.append(remove);
+
+        slot.addEventListener("click", () => {
+          addCardToBoard(card);
+        });
+      }
+
+      slot.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "copy";
+        slot.classList.add("is-drop-target");
+      });
+      slot.addEventListener("dragleave", () => {
+        slot.classList.remove("is-drop-target");
+      });
+      slot.addEventListener("drop", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        slot.classList.remove("is-drop-target");
+        const dropped = readCardFromDataTransfer(event.dataTransfer);
+        if (!dropped) {
+          return;
+        }
+        const existingIndex = state.quickSlots.findIndex((slotEntry) => (
+          slotEntry && String(slotEntry.id) === String(dropped.id) && slotEntry.source === dropped.source
+        ));
+        if (existingIndex !== -1 && existingIndex !== index) {
+          state.quickSlots[existingIndex] = null;
+        }
+        state.quickSlots[index] = { id: String(dropped.id), source: dropped.source };
+        saveQuickSlots();
+        renderQuickSlots();
+      });
+
+      quickSlotsEl.append(slot);
+    }
   }
 
   function getSlotPosition(slot) {
@@ -266,6 +413,10 @@
         state.draggingLibrary = true;
         event.dataTransfer.effectAllowed = "copy";
         event.dataTransfer.setData("text/plain", String(card.id));
+        event.dataTransfer.setData("application/x-bg-card", JSON.stringify({
+          id: String(card.id),
+          source: card.source
+        }));
       });
 
       button.addEventListener("dragend", () => {
@@ -340,6 +491,11 @@
 
   function renderBoard() {
     boardEl.replaceChildren();
+
+    const grid = document.createElement("div");
+    grid.className = "strategy-board-grid";
+    grid.setAttribute("aria-hidden", "true");
+    boardEl.append(grid);
 
     const hint = document.createElement("div");
     hint.className = "strategy-board-hint";
@@ -427,6 +583,33 @@
     canvas.width = EXPORT_WIDTH;
     canvas.height = Math.ceil(EXPORT_TOP_PADDING + exportRows * maxCardHeight + Math.max(0, exportRows - 1) * EXPORT_ROW_GAP + EXPORT_BOTTOM_PADDING);
     const ctx = canvas.getContext("2d");
+
+    if (state.backgroundMode === "wallpaper") {
+      try {
+        const wallpaper = await window.Shared.loadImageFromSource("./wallpaper.jpg");
+        const wallpaperRatio = wallpaper.width / wallpaper.height;
+        const canvasRatio = canvas.width / canvas.height;
+        let drawW = canvas.width;
+        let drawH = canvas.height;
+        if (wallpaperRatio > canvasRatio) {
+          drawH = canvas.height;
+          drawW = drawH * wallpaperRatio;
+        } else {
+          drawW = canvas.width;
+          drawH = drawW / wallpaperRatio;
+        }
+        const drawX = (canvas.width - drawW) / 2;
+        const drawY = (canvas.height - drawH) / 2;
+        ctx.save();
+        ctx.filter = `blur(${WALLPAPER_BLUR_PX}px) brightness(${WALLPAPER_BRIGHTNESS})`;
+        ctx.drawImage(wallpaper, drawX, drawY, drawW, drawH);
+        ctx.restore();
+        ctx.fillStyle = "rgba(4, 8, 16, 0.35)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      } catch (error) {
+        console.warn("Не удалось отрисовать игровой фон:", error);
+      }
+    }
 
     for (const { card, image } of entries) {
       const originalRow = Math.floor(card.slot / BOARD_COLUMNS);
@@ -573,6 +756,8 @@ function normalizeHeroCard(hero, tier) {
       syncAccessorySizeFilter();
       updateLibrary();
       renderBoard();
+      renderQuickSlots();
+      applyBoardVisualSettings();
     } catch (error) {
       console.error(error);
       setStatus("Не удалось загрузить библиотеку героев, карт и заклинаний.");
@@ -590,14 +775,30 @@ function normalizeHeroCard(hero, tier) {
 
   boardEl.addEventListener("drop", (event) => {
     event.preventDefault();
-    const cardId = event.dataTransfer.getData("text/plain");
-    const card = state.cards.find((item) => String(item.id) === String(cardId));
+    const card = readCardFromDataTransfer(event.dataTransfer);
     if (!card) {
       return;
     }
 
     addCardToBoard(card, getNearestSlot(event.clientX, event.clientY));
   });
+
+  function readCardFromDataTransfer(dataTransfer) {
+    const rich = dataTransfer.getData("application/x-bg-card");
+    if (rich) {
+      try {
+        const parsed = JSON.parse(rich);
+        const found = findCard(parsed.id, parsed.source);
+        if (found) {
+          return found;
+        }
+      } catch (error) {
+        // fall through to text/plain
+      }
+    }
+    const cardId = dataTransfer.getData("text/plain");
+    return state.cards.find((item) => String(item.id) === String(cardId)) || null;
+  }
 
   searchInput.addEventListener("input", window.Shared.debounce((event) => {
     state.search = event.target.value;
@@ -633,6 +834,21 @@ function normalizeHeroCard(hero, tier) {
 
   exportPngButton.addEventListener("click", () => exportBoard("png"));
   exportWebpButton.addEventListener("click", () => exportBoard("webp"));
+
+  if (toggleGridButton) {
+    toggleGridButton.addEventListener("click", () => {
+      state.showGrid = !state.showGrid;
+      applyBoardVisualSettings();
+    });
+  }
+
+  if (toggleBackgroundInput) {
+    toggleBackgroundInput.addEventListener("change", (event) => {
+      state.backgroundMode = event.target.checked ? "wallpaper" : "transparent";
+      saveBackgroundMode();
+      applyBoardVisualSettings();
+    });
+  }
 
   document.addEventListener("wheel", (event) => {
     if (state.draggingLibrary || state.draggingPlaced) {

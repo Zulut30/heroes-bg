@@ -98,6 +98,14 @@
             <button id="builder-export-png" class="download-button" type="button">Скачать PNG</button>
             <button id="builder-export-webp" class="secondary-button" type="button">Скачать WebP</button>
           </div>
+
+          <div class="builder-toolbar builder-toolbar-options">
+            <button id="builder-toggle-grid" class="secondary-button" type="button" aria-pressed="false">Показать сетку</button>
+            <label class="builder-checkbox">
+              <input id="builder-toggle-background" type="checkbox">
+              <span>Игровой фон</span>
+            </label>
+          </div>
         </div>
 
         <div id="builder-status" class="library-status">Загружаю карты...</div>
@@ -113,7 +121,16 @@
           <div id="builder-counter" class="filter-caption">0 карт на полотне</div>
         </div>
 
+        <div class="quick-slots-panel" aria-label="Быстрые слоты">
+          <div class="quick-slots-header">
+            <span class="eyebrow">Быстрые слоты</span>
+            <span class="quick-slots-hint">Перетащи сюда до 10 часто используемых карт</span>
+          </div>
+          <div id="quick-slots" class="quick-slots-list"></div>
+        </div>
+
         <div id="strategy-board" class="strategy-board strategy-board-compact">
+          <div class="strategy-board-grid" aria-hidden="true"></div>
           <div class="strategy-board-hint">
             Перетащи сюда героев, существ и заклинания из библиотеки слева
           </div>
