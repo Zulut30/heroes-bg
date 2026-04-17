@@ -23,75 +23,38 @@
 
     <main class="builder-layout">
       <section class="builder-sidebar builder-sidebar-wide">
-        <div class="builder-sidebar-head">
-          <p class="eyebrow">Tier List Builder</p>
-          <h1 class="builder-title">Конструктор тир-листов</h1>
-          <p class="hero-copy">
-            Собирай свой тир-лист существ, заклинаний, аксессуаров или героев. Карты можно быстро фильтровать,
-            перетаскивать по тиру, а внутри ряда переставлять кнопками, чтобы финальная раскладка собиралась без лишней суеты.
-          </p>
-        </div>
-
         <div class="builder-controls">
           <label class="control-field">
-            <span class="control-label">Поиск по картам</span>
-            <input id="tier-builder-search" class="text-input" type="search" placeholder="Например, мурлок, заклинание, аксессуар, Тюремщик">
+            <span class="control-label">Поиск по картам (RU / EN)</span>
+            <input id="tier-builder-search" class="text-input" type="search" placeholder="Например, мурлок, murloc, deathrattle, Тюремщик">
           </label>
 
-          <div class="builder-filter-row builder-filter-row-triple">
-            <label class="control-field">
-              <span class="control-label">Источник</span>
-              <select id="tier-builder-source" class="select-input">
-                <option value="ALL">Все карты</option>
-                <option value="MINION">Существа</option>
-                <option value="SPELL">Заклинания</option>
-                <option value="ACCESSORY">Аксессуары</option>
-                <option value="HERO">Герои</option>
-              </select>
-            </label>
-
-            <label class="control-field">
-              <span class="control-label">Тип существа</span>
-              <select id="tier-builder-race" class="select-input">
-                <option value="ALL">Все типы</option>
-                <option value="NONE">Без типа</option>
-                <option value="BEAST">Звери</option>
-                <option value="DEMON">Демоны</option>
-                <option value="DRAGON">Драконы</option>
-                <option value="ELEMENTAL">Элементали</option>
-                <option value="MECHANICAL">Механизмы</option>
-                <option value="MURLOC">Мурлоки</option>
-                <option value="NAGA">Наги</option>
-                <option value="PIRATE">Пираты</option>
-                <option value="QUILBOAR">Свинобразы</option>
-                <option value="UNDEAD">Нежить</option>
-              </select>
-            </label>
-
-            <label class="control-field">
-              <span class="control-label">Таверна</span>
-              <select id="tier-builder-level" class="select-input">
-                <option value="ALL">Все уровни</option>
-                <option value="1">Таверна 1</option>
-                <option value="2">Таверна 2</option>
-                <option value="3">Таверна 3</option>
-                <option value="4">Таверна 4</option>
-                <option value="5">Таверна 5</option>
-                <option value="6">Таверна 6</option>
-                <option value="7">Таверна 7</option>
-              </select>
-            </label>
+          <div class="filter-block">
+            <div class="filter-heading-row">
+              <h3 class="filter-heading">Источник</h3>
+            </div>
+            <div id="tier-builder-source-filters" class="chip-row" aria-label="Фильтр по источнику"></div>
           </div>
 
-          <div class="builder-filter-row builder-filter-row-secondary">
-            <label class="control-field">
-              <span class="control-label">Размер аксессуара</span>
-              <select id="tier-builder-accessory-size" class="select-input" disabled>
-                <option value="ALL">Все аксессуары</option>
-                <option value="SMALL">Только малые</option>
-                <option value="LARGE">Только большие</option>
-              </select>
-            </label>
+          <div class="filter-block" id="tier-builder-race-block">
+            <div class="filter-heading-row">
+              <h3 class="filter-heading">Тип существа</h3>
+            </div>
+            <div id="tier-builder-race-filters" class="chip-row" aria-label="Фильтр по типу существа"></div>
+          </div>
+
+          <div class="filter-block" id="tier-builder-level-block">
+            <div class="filter-heading-row">
+              <h3 class="filter-heading">Уровень таверны</h3>
+            </div>
+            <div id="tier-builder-level-filters" class="chip-row" aria-label="Фильтр по уровню таверны"></div>
+          </div>
+
+          <div class="filter-block" id="tier-builder-accessory-block" hidden>
+            <div class="filter-heading-row">
+              <h3 class="filter-heading">Размер аксессуара</h3>
+            </div>
+            <div id="tier-builder-accessory-filters" class="chip-row" aria-label="Фильтр по размеру аксессуара"></div>
           </div>
 
           <div class="hero-tier-toolbar">

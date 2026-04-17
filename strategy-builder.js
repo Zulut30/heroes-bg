@@ -800,8 +800,12 @@
       const y = rowTop + (maxCardHeight - cardHeight) / 2;
       if (card.highlighted) {
         ctx.save();
-        ctx.shadowColor = "rgba(240, 215, 154, 0.85)";
-        ctx.shadowBlur = 36;
+        ctx.shadowColor = "rgba(255, 222, 130, 1)";
+        ctx.shadowBlur = 70;
+        ctx.drawImage(image, x, y, cardWidth, cardHeight);
+        ctx.shadowBlur = 42;
+        ctx.drawImage(image, x, y, cardWidth, cardHeight);
+        ctx.shadowBlur = 24;
         ctx.drawImage(image, x, y, cardWidth, cardHeight);
         ctx.restore();
         ctx.drawImage(image, x, y, cardWidth, cardHeight);
