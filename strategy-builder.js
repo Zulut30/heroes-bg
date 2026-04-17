@@ -707,19 +707,22 @@
     if (state.backgroundMode === "wallpaper") {
       try {
         const wallpaper = await window.Shared.loadImageFromSource("./wallpaper.jpg");
+        const bleed = WALLPAPER_BLUR_PX * 4;
+        const targetW = canvas.width + bleed * 2;
+        const targetH = canvas.height + bleed * 2;
         const wallpaperRatio = wallpaper.width / wallpaper.height;
-        const canvasRatio = canvas.width / canvas.height;
-        let drawW = canvas.width;
-        let drawH = canvas.height;
-        if (wallpaperRatio > canvasRatio) {
-          drawH = canvas.height;
+        const targetRatio = targetW / targetH;
+        let drawW;
+        let drawH;
+        if (wallpaperRatio > targetRatio) {
+          drawH = targetH;
           drawW = drawH * wallpaperRatio;
         } else {
-          drawW = canvas.width;
+          drawW = targetW;
           drawH = drawW / wallpaperRatio;
         }
-        const drawX = (canvas.width - drawW) / 2;
-        const drawY = (canvas.height - drawH) / 2;
+        const drawX = -bleed + (targetW - drawW) / 2;
+        const drawY = -bleed + (targetH - drawH) / 2;
         ctx.save();
         ctx.filter = `blur(${WALLPAPER_BLUR_PX}px) brightness(${WALLPAPER_BRIGHTNESS})`;
         ctx.drawImage(wallpaper, drawX, drawY, drawW, drawH);
