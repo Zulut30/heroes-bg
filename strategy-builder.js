@@ -1,9 +1,12 @@
 (function () {
   const searchInput = document.getElementById("builder-search");
-  const sourceSelect = document.getElementById("builder-source");
-  const raceSelect = document.getElementById("builder-race");
-  const levelSelect = document.getElementById("builder-level");
-  const accessorySizeSelect = document.getElementById("builder-accessory-size");
+  const sourceFiltersEl = document.getElementById("builder-source-filters");
+  const raceFiltersEl = document.getElementById("builder-race-filters");
+  const levelFiltersEl = document.getElementById("builder-level-filters");
+  const accessoryFiltersEl = document.getElementById("builder-accessory-filters");
+  const raceBlockEl = document.getElementById("builder-race-block");
+  const levelBlockEl = document.getElementById("builder-level-block");
+  const accessoryBlockEl = document.getElementById("builder-accessory-block");
   const clearButton = document.getElementById("builder-clear");
   const exportPngButton = document.getElementById("builder-export-png");
   const exportWebpButton = document.getElementById("builder-export-webp");
@@ -339,11 +342,128 @@
 
   function syncAccessorySizeFilter() {
     const enabled = state.source === "ACCESSORY";
-    accessorySizeSelect.disabled = !enabled;
-    if (!enabled && accessorySizeSelect.value !== "ALL") {
-      accessorySizeSelect.value = "ALL";
+    if (accessoryBlockEl) {
+      accessoryBlockEl.hidden = !enabled;
+    }
+    if (!enabled && state.accessorySize !== "ALL") {
       state.accessorySize = "ALL";
     }
+    if (raceBlockEl) {
+      const showRace = state.source === "ALL" || state.source === "MINION";
+      raceBlockEl.hidden = !showRace;
+      if (!showRace && state.race !== "ALL") {
+        state.race = "ALL";
+      }
+    }
+    if (levelBlockEl) {
+      const showLevel = state.source !== "HERO" && state.source !== "ACCESSORY";
+      levelBlockEl.hidden = !showLevel;
+      if (!showLevel && state.level !== "ALL") {
+        state.level = "ALL";
+      }
+    }
+  }
+
+  function createFilterChip(label, isActive, onClick, options = {}) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `chip${isActive ? " is-active" : ""}`;
+    if (options.icon) {
+      button.style.setProperty("--chip-icon", `url("${options.icon}")`);
+      button.classList.add("chip-with-icon");
+    }
+    button.innerHTML = `
+      ${options.icon ? '<span class="chip-icon" aria-hidden="true"></span>' : ""}
+      <span class="chip-label">${label}</span>
+    `;
+    button.addEventListener("click", onClick);
+    return button;
+  }
+
+  const sourceOptions = [
+    { value: "ALL", label: "Все карты" },
+    { value: "HERO", label: "Герои" },
+    { value: "MINION", label: "Существа" },
+    { value: "SPELL", label: "Заклинания" },
+    { value: "ACCESSORY", label: "Аксессуары" }
+  ];
+
+  const raceOrder = ["ALL", "NONE", "BEAST", "DEMON", "DRAGON", "ELEMENTAL", "MECHANICAL", "MURLOC", "NAGA", "PIRATE", "QUILBOAR", "UNDEAD"];
+  const raceIcons = {
+    ALL: "./assset/общее.webp",
+    NONE: "./assset/общее.webp",
+    BEAST: "./assset/зверь.webp",
+    DEMON: "./assset/демоны.webp",
+    DRAGON: "./assset/драконы.webp",
+    ELEMENTAL: "./assset/элементали.webp",
+    MECHANICAL: "./assset/механизмы.webp",
+    MURLOC: "./assset/мурлоки.webp",
+    NAGA: "./assset/наги.webp",
+    PIRATE: "./assset/пираты.webp",
+    QUILBOAR: "./assset/свинобразы.webp",
+    UNDEAD: "./assset/нежить.webp"
+  };
+
+  function renderSourceFilters() {
+    if (!sourceFiltersEl) return;
+    sourceFiltersEl.replaceChildren();
+    sourceOptions.forEach((option) => {
+      sourceFiltersEl.append(createFilterChip(option.label, state.source === option.value, () => {
+        state.source = option.value;
+        syncAccessorySizeFilter();
+        renderSourceFilters();
+        renderRaceFilters();
+        renderLevelFilters();
+        renderAccessoryFilters();
+        updateLibrary();
+      }));
+    });
+  }
+
+  function renderRaceFilters() {
+    if (!raceFiltersEl) return;
+    raceFiltersEl.replaceChildren();
+    raceOrder.forEach((race) => {
+      raceFiltersEl.append(createFilterChip(raceNames[race] || race, state.race === race, () => {
+        state.race = race;
+        renderRaceFilters();
+        updateLibrary();
+      }, { icon: raceIcons[race] }));
+    });
+  }
+
+  function renderLevelFilters() {
+    if (!levelFiltersEl) return;
+    levelFiltersEl.replaceChildren();
+    const levels = [{ value: "ALL", label: "Все уровни" }, ...["1", "2", "3", "4", "5", "6", "7"].map((level) => ({
+      value: level,
+      label: `Таверна ${level}`,
+      icon: `./assset/tier${level}.png`
+    }))];
+    levels.forEach((item) => {
+      levelFiltersEl.append(createFilterChip(item.label, state.level === item.value, () => {
+        state.level = item.value;
+        renderLevelFilters();
+        updateLibrary();
+      }, { icon: item.icon }));
+    });
+  }
+
+  function renderAccessoryFilters() {
+    if (!accessoryFiltersEl) return;
+    accessoryFiltersEl.replaceChildren();
+    const options = [
+      { value: "ALL", label: "Все аксессуары" },
+      { value: "SMALL", label: "Только малые" },
+      { value: "LARGE", label: "Только большие" }
+    ];
+    options.forEach((option) => {
+      accessoryFiltersEl.append(createFilterChip(option.label, state.accessorySize === option.value, () => {
+        state.accessorySize = option.value;
+        renderAccessoryFilters();
+        updateLibrary();
+      }));
+    });
   }
 
   function getLibraryMeta(card) {
@@ -499,7 +619,7 @@
 
     const hint = document.createElement("div");
     hint.className = "strategy-board-hint";
-    hint.textContent = "Полотно стало компактнее, а библиотека слева шире. Перетаскивай сюда героев, существ и заклинания.";
+    hint.textContent = "Перетаскивай карты из библиотеки сюда.";
 
     if (!state.placed.length) {
       boardEl.append(hint);
@@ -733,27 +853,52 @@ function normalizeHeroCard(hero, tier) {
       const libraryPayload = await libraryResponse.json();
       const spellsPayload = await spellsResponse.json();
       const englishNamesPayload = await englishNamesResponse.json();
-      const englishById = new Map((englishNamesPayload.cards || []).map((card) => [String(card.id), card]));
+      const englishCards = englishNamesPayload.cards || [];
+      const englishByKey = new Map();
+      englishCards.forEach((card) => {
+        if (card?.id != null) {
+          englishByKey.set(String(card.id), card);
+        }
+        if (card?.slug) {
+          englishByKey.set(`slug:${String(card.slug)}`, card);
+        }
+      });
+      const resolveEnglish = (localCard) => (
+        englishByKey.get(String(localCard.dbfId))
+        || englishByKey.get(String(localCard.id))
+        || (localCard.slug ? englishByKey.get(`slug:${String(localCard.slug)}`) : null)
+        || null
+      );
       const heroes = getHeroCards();
       const minions = Array.isArray(libraryPayload.cards)
-        ? libraryPayload.cards.map((card) => normalizeMinionCard({
-          ...card,
-          englishName: englishById.get(String(card.id))?.name || "",
-          slug: englishById.get(String(card.id))?.slug || ""
-        }))
+        ? libraryPayload.cards.map((card) => {
+          const english = resolveEnglish(card);
+          return normalizeMinionCard({
+            ...card,
+            englishName: english?.name || "",
+            slug: english?.slug || ""
+          });
+        })
         : [];
       const spells = Array.isArray(spellsPayload.cards)
-        ? spellsPayload.cards.map((card) => normalizeSpellCard({
-          ...card,
-          englishName: englishById.get(String(card.id))?.name || "",
-          slug: englishById.get(String(card.id))?.slug || ""
-        }))
+        ? spellsPayload.cards.map((card) => {
+          const english = resolveEnglish(card);
+          return normalizeSpellCard({
+            ...card,
+            englishName: english?.name || "",
+            slug: english?.slug || ""
+          });
+        })
         : [];
       const accessoriesPayload = window.accessoriesData || {};
       const accessories = [...(accessoriesPayload.small || []), ...(accessoriesPayload.large || [])].map(normalizeAccessoryCard);
 
       state.cards = [...heroes, ...minions, ...spells, ...accessories];
       syncAccessorySizeFilter();
+      renderSourceFilters();
+      renderRaceFilters();
+      renderLevelFilters();
+      renderAccessoryFilters();
       updateLibrary();
       renderBoard();
       renderQuickSlots();
@@ -804,27 +949,6 @@ function normalizeHeroCard(hero, tier) {
     state.search = event.target.value;
     updateLibrary();
   }, 120));
-
-  sourceSelect.addEventListener("change", (event) => {
-    state.source = event.target.value;
-    syncAccessorySizeFilter();
-    updateLibrary();
-  });
-
-  raceSelect.addEventListener("change", (event) => {
-    state.race = event.target.value;
-    updateLibrary();
-  });
-
-  levelSelect.addEventListener("change", (event) => {
-    state.level = event.target.value;
-    updateLibrary();
-  });
-
-  accessorySizeSelect.addEventListener("change", (event) => {
-    state.accessorySize = event.target.value;
-    updateLibrary();
-  });
 
   clearButton.addEventListener("click", () => {
     state.placed = [];
