@@ -58,7 +58,7 @@
   };
 
   function getCardArtUrl(card, size = "512x") {
-    if (card?.source === "HERO" || card?.source === "ACCESSORY") {
+    if (card?.source === "SPELL" || card?.source === "HERO" || card?.source === "ACCESSORY") {
       return card?.image || card?.artUrl || "";
     }
 
@@ -84,6 +84,22 @@
       .toLowerCase()
       .replace(/[^a-zа-яё0-9]+/gi, "-")
       .replace(/(^-|-$)/g, "");
+  }
+
+  function getEnglishNameFromImagePath(imagePath) {
+    const raw = String(imagePath || "").trim();
+    if (!raw) {
+      return "";
+    }
+
+    const filename = raw.split("/").pop() || raw;
+    const withoutExtension = filename.replace(/\.[a-z0-9]+$/i, "");
+
+    try {
+      return decodeURIComponent(withoutExtension).replace(/\s+/g, " ").trim();
+    } catch (error) {
+      return withoutExtension.replace(/\s+/g, " ").trim();
+    }
   }
 
   function setStatus(text) {
@@ -131,6 +147,8 @@
   function getCardSearchText(card) {
     return [
       card.name,
+      card.englishName,
+      card.slug,
       card.text,
       card.source === "SPELL" ? "заклинание tavern spell" : "",
       card.source === "MINION" ? "существо minion" : "",
@@ -490,6 +508,7 @@
     return {
       id: `hero-${slugify(hero.name)}`,
       name: hero.name,
+      englishName: getEnglishNameFromImagePath(hero.image),
       text: "",
       techLevel: 0,
       races: [],
@@ -504,6 +523,8 @@
     return {
       id: String(card.id),
       name: card.name,
+      englishName: card.englishName || "",
+      slug: card.slug || "",
       text: card.text || "",
       techLevel: card.techLevel || 0,
       races: card.races || [],
@@ -517,6 +538,8 @@
     return {
       id: String(card.id),
       name: card.name,
+      englishName: card.englishName || "",
+      slug: card.slug || "",
       text: stripHtml(card.text || ""),
       techLevel: card.tier || 0,
       races: [],
@@ -530,6 +553,8 @@
     return {
       id: card.id,
       name: card.name,
+      englishName: "",
+      slug: "",
       text: "",
       techLevel: 0,
       races: [],
@@ -548,9 +573,12 @@
 
   async function bootstrap() {
     try {
-      const [libraryResponse, spellsResponse] = await Promise.all([
+      const [libraryResponse, spellsResponse, englishNamesResponse] = await Promise.all([
         fetch("./bgs-library.json", { cache: "force-cache" }),
         fetch("./api/battlegrounds-spells?locale=ru_RU&pageSize=200", {
+          headers: { Accept: "application/json" }
+        }),
+        fetch("./api/battlegrounds-card-names?locale=en_US", {
           headers: { Accept: "application/json" }
         })
       ]);
@@ -561,12 +589,29 @@
       if (!spellsResponse.ok) {
         throw new Error(`Spells HTTP ${spellsResponse.status}`);
       }
+      if (!englishNamesResponse.ok) {
+        throw new Error(`English names HTTP ${englishNamesResponse.status}`);
+      }
 
       const libraryPayload = await libraryResponse.json();
       const spellsPayload = await spellsResponse.json();
+      const englishNamesPayload = await englishNamesResponse.json();
+      const englishById = new Map((englishNamesPayload.cards || []).map((card) => [String(card.id), card]));
       const heroes = getHeroCards();
-      const minions = Array.isArray(libraryPayload.cards) ? libraryPayload.cards.map(normalizeMinionCard) : [];
-      const spells = Array.isArray(spellsPayload.cards) ? spellsPayload.cards.map(normalizeSpellCard) : [];
+      const minions = Array.isArray(libraryPayload.cards)
+        ? libraryPayload.cards.map((card) => normalizeMinionCard({
+          ...card,
+          englishName: englishById.get(String(card.id))?.name || "",
+          slug: englishById.get(String(card.id))?.slug || ""
+        }))
+        : [];
+      const spells = Array.isArray(spellsPayload.cards)
+        ? spellsPayload.cards.map((card) => normalizeSpellCard({
+          ...card,
+          englishName: englishById.get(String(card.id))?.name || "",
+          slug: englishById.get(String(card.id))?.slug || ""
+        }))
+        : [];
       const accessoriesPayload = window.accessoriesData || {};
       const accessories = [...(accessoriesPayload.small || []), ...(accessoriesPayload.large || [])].map(normalizeAccessoryCard);
 
