@@ -20,7 +20,7 @@
   const lightboxNext = document.getElementById("lightbox-next");
 
   const raceNames = {
-    NONE: "Без типа",
+    NONE: "Нейтральные",
     ALL: "Все типы",
     BEAST: "Звери",
     DEMON: "Демоны",
@@ -249,7 +249,7 @@
   }
 
   function getCardMeta(card) {
-    const typeLabel = card.races?.length ? card.races.map((race) => raceNames[race] || race).join(", ") : "Без типа";
+    const typeLabel = card.races?.length ? card.races.map((race) => raceNames[race] || race).join(", ") : "Нейтральные";
     return `Таверна ${card.techLevel || "?"} • ${typeLabel} • ${card.attack || 0}/${card.health || 0}`;
   }
 
@@ -269,7 +269,7 @@
     lightboxText.textContent = card.text || "Текст карты отсутствует.";
     lightboxKicker.textContent = card.races?.length
       ? card.races.map((race) => raceNames[race] || race).join(" • ")
-      : "Без типа";
+      : "Нейтральные";
   }
 
   function closeLightbox() {

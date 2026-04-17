@@ -48,7 +48,7 @@
   const BOARD_ROW_GAP = 0.116;
 
   const raceNames = {
-    NONE: "Без типа",
+    NONE: "Нейтральные",
     ALL: "Все типы",
     BEAST: "Звери",
     DEMON: "Демоны",
@@ -537,7 +537,7 @@
       return `${card.accessorySize === "LARGE" ? "Большой аксессуар" : "Малый аксессуар"} • Новый слот стратегии`;
     }
 
-    const raceLabel = raceNames[(card.races || [])[0]] || "Без типа";
+    const raceLabel = raceNames[(card.races || [])[0]] || "Нейтральные";
     return `${raceLabel} • Таверна ${card.techLevel || "?"}`;
   }
 

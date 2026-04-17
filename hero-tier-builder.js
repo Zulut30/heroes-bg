@@ -3,7 +3,7 @@
   const UNASSIGNED_KEY = "POOL";
 
   const raceNames = {
-    NONE: "Без типа",
+    NONE: "Нейтральные",
     ALL: "Все типы",
     BEAST: "Звери",
     DEMON: "Демоны",
@@ -394,7 +394,7 @@
     if (card.source === "ACCESSORY") {
       return card.accessorySize === "LARGE" ? "Большой аксессуар" : "Малый аксессуар";
     }
-    return `Таверна ${card.techLevel || "?"} • ${raceNames[(card.races || [])[0]] || "Без типа"}`;
+    return `Таверна ${card.techLevel || "?"} • ${raceNames[(card.races || [])[0]] || "Нейтральные"}`;
   }
 
   function getBucketForCard(cardId) {
