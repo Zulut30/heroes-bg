@@ -7,13 +7,22 @@
   const excludeDuosInput = document.getElementById("spells-exclude-duos");
   const resetButton = document.getElementById("spells-reset");
   const exportButton = document.getElementById("spells-export");
+  const lightbox = document.getElementById("lightbox");
+  const lightboxImage = document.getElementById("lightbox-image");
+  const lightboxTitle = document.getElementById("lightbox-title");
+  const lightboxMeta = document.getElementById("lightbox-meta");
+  const lightboxText = document.getElementById("lightbox-text");
+  const lightboxKicker = document.getElementById("lightbox-kicker");
+  const lightboxPrev = document.getElementById("lightbox-prev");
+  const lightboxNext = document.getElementById("lightbox-next");
 
   const state = {
     cards: [],
     filtered: [],
     search: "",
     tier: "ALL",
-    excludeDuos: false
+    excludeDuos: false,
+    lightboxIndex: -1
   };
 
   function normalize(value) {
@@ -33,6 +42,38 @@
     return searchOk && tierOk && duoOk;
   }
 
+  function openLightbox(index) {
+    const card = state.filtered[index];
+    if (!card) {
+      return;
+    }
+
+    state.lightboxIndex = index;
+    lightbox.hidden = false;
+    document.body.style.overflow = "hidden";
+    lightboxImage.src = card.image;
+    lightboxImage.alt = card.name;
+    lightboxTitle.textContent = card.name;
+    lightboxMeta.textContent = `Таверна ${card.tier || "?"} • Мана ${card.manaCost ?? 0}`;
+    lightboxText.textContent = card.text || "Текст карты отсутствует.";
+    lightboxKicker.textContent = "Заклинание";
+  }
+
+  function closeLightbox() {
+    state.lightboxIndex = -1;
+    lightbox.hidden = true;
+    document.body.style.overflow = "";
+    lightboxImage.src = "";
+  }
+
+  function moveLightbox(step) {
+    if (!state.filtered.length) {
+      return;
+    }
+    const nextIndex = (state.lightboxIndex + step + state.filtered.length) % state.filtered.length;
+    openLightbox(nextIndex);
+  }
+
   function render() {
     grid.innerHTML = "";
     counter.textContent = `${state.filtered.length} карточек`;
@@ -47,6 +88,7 @@
     state.filtered.forEach((card) => {
       const tile = document.createElement("article");
       tile.className = "card-tile";
+      tile.tabIndex = 0;
       tile.innerHTML = `
         <img
           class="card-art"
@@ -57,6 +99,15 @@
           fetchpriority="low"
         >
       `;
+      const index = state.filtered.indexOf(card);
+      const activate = () => openLightbox(index);
+      tile.addEventListener("click", activate);
+      tile.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          activate();
+        }
+      });
       grid.append(tile);
     });
   }
@@ -160,6 +211,30 @@
   });
 
   exportButton.addEventListener("click", exportCurrentSelection);
+
+  lightbox.addEventListener("click", (event) => {
+    if (event.target instanceof HTMLElement && event.target.dataset.closeLightbox === "true") {
+      closeLightbox();
+    }
+  });
+
+  lightboxPrev.addEventListener("click", () => moveLightbox(-1));
+  lightboxNext.addEventListener("click", () => moveLightbox(1));
+
+  document.addEventListener("keydown", (event) => {
+    if (lightbox.hidden) {
+      return;
+    }
+    if (event.key === "Escape") {
+      closeLightbox();
+    }
+    if (event.key === "ArrowLeft") {
+      moveLightbox(-1);
+    }
+    if (event.key === "ArrowRight") {
+      moveLightbox(1);
+    }
+  });
 
   loadSpells();
 })();

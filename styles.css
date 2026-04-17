@@ -703,7 +703,8 @@ h1 {
 
 .hero-tier-pool {
   display: grid;
-  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
   max-height: 68vh;
   margin-top: 16px;
   padding-right: 6px;
@@ -774,6 +775,11 @@ h1 {
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.04);
   cursor: grab;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.tier-builder-card-media {
+  width: 100%;
 }
 
 .tier-builder-card:hover {
@@ -790,9 +796,36 @@ h1 {
   object-fit: contain;
 }
 
-.tier-builder-card span {
+.tier-builder-card-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.tier-builder-card span,
+.tier-builder-card-meta {
   font-size: 0.88rem;
   line-height: 1.15;
+}
+
+.tier-builder-card-meta {
+  color: var(--muted);
+}
+
+.tier-builder-card-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.tier-builder-card-button {
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  padding: 8px 0;
+  cursor: pointer;
 }
 
 .api-panel {

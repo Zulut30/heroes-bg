@@ -3,17 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Конструктор тир-листа героев</title>
+  <title>Конструктор тир-листов</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <div class="page-shell">
+  <div class="page-shell page-shell-wide">
     <header class="site-header">
       <a class="brand-mark" href="./index.html">Battlegrounds Hub</a>
       <nav class="site-nav" aria-label="Основная навигация">
         <a class="nav-link" href="./index.html">Главная</a>
-        <a class="nav-link" href="./tier-list.html">Тир-лист</a>
-        <a class="nav-link" href="./hero-tier-builder.html">Конструктор тиров</a>
+        <a class="nav-link is-active" href="./hero-tier-builder.html">Конструктор тир-листов</a>
         <a class="nav-link" href="./library.html">Библиотека карт</a>
         <a class="nav-link" href="./blizzard-spells.html">Заклинания</a>
         <a class="nav-link" href="./accessories.html">Аксессуары</a>
@@ -21,26 +20,76 @@
       </nav>
     </header>
 
-    <main class="hero-tier-layout">
-      <section class="hero-tier-sidebar">
-        <p class="eyebrow">Hero Tier Builder</p>
-        <h1 class="builder-title">Конструктор тир-листа героев</h1>
-        <p class="hero-copy">
-          Перетаскивай героев между рядами, собирай свой собственный тир-лист и быстро возвращайся к исходной раскладке.
-        </p>
-
-        <label class="control-field hero-tier-search">
-          <span class="control-label">Поиск героя</span>
-          <input id="hero-tier-search" class="text-input" type="search" placeholder="Например, Морхи, Н'Зот, Король-лич">
-        </label>
-
-        <div class="hero-tier-toolbar">
-          <button id="hero-tier-reset" class="secondary-button" type="button">Сбросить</button>
-          <button id="hero-tier-unassigned" class="download-button" type="button">Все в пул</button>
+    <main class="builder-layout">
+      <section class="builder-sidebar builder-sidebar-wide">
+        <div class="builder-sidebar-head">
+          <p class="eyebrow">Tier List Builder</p>
+          <h1 class="builder-title">Конструктор тир-листов</h1>
+          <p class="hero-copy">
+            Собирай свой тир-лист существ, заклинаний, аксессуаров или героев. Карты можно быстро фильтровать,
+            перетаскивать по тиру, а внутри ряда переставлять кнопками, чтобы финальная раскладка собиралась без лишней суеты.
+          </p>
         </div>
 
-        <div id="hero-tier-summary" class="library-status hero-tier-summary">Загружаю героев...</div>
-        <div id="hero-tier-pool" class="hero-tier-pool" aria-live="polite"></div>
+        <div class="builder-controls">
+          <label class="control-field">
+            <span class="control-label">Поиск по картам</span>
+            <input id="tier-builder-search" class="text-input" type="search" placeholder="Например, мурлок, заклинание, аксессуар, Тюремщик">
+          </label>
+
+          <div class="builder-filter-row builder-filter-row-triple">
+            <label class="control-field">
+              <span class="control-label">Источник</span>
+              <select id="tier-builder-source" class="select-input">
+                <option value="ALL">Все карты</option>
+                <option value="MINION">Существа</option>
+                <option value="SPELL">Заклинания</option>
+                <option value="ACCESSORY">Аксессуары</option>
+                <option value="HERO">Герои</option>
+              </select>
+            </label>
+
+            <label class="control-field">
+              <span class="control-label">Тип существа</span>
+              <select id="tier-builder-race" class="select-input">
+                <option value="ALL">Все типы</option>
+                <option value="NONE">Без типа</option>
+                <option value="BEAST">Звери</option>
+                <option value="DEMON">Демоны</option>
+                <option value="DRAGON">Драконы</option>
+                <option value="ELEMENTAL">Элементали</option>
+                <option value="MECHANICAL">Механизмы</option>
+                <option value="MURLOC">Мурлоки</option>
+                <option value="NAGA">Наги</option>
+                <option value="PIRATE">Пираты</option>
+                <option value="QUILBOAR">Свинобразы</option>
+                <option value="UNDEAD">Нежить</option>
+              </select>
+            </label>
+
+            <label class="control-field">
+              <span class="control-label">Таверна</span>
+              <select id="tier-builder-level" class="select-input">
+                <option value="ALL">Все уровни</option>
+                <option value="1">Таверна 1</option>
+                <option value="2">Таверна 2</option>
+                <option value="3">Таверна 3</option>
+                <option value="4">Таверна 4</option>
+                <option value="5">Таверна 5</option>
+                <option value="6">Таверна 6</option>
+                <option value="7">Таверна 7</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="hero-tier-toolbar">
+            <button id="tier-builder-reset" class="secondary-button" type="button">Сбросить</button>
+            <button id="tier-builder-unassigned" class="download-button" type="button">Все в пул</button>
+          </div>
+        </div>
+
+        <div id="tier-builder-summary" class="library-status hero-tier-summary">Загружаю библиотеку...</div>
+        <div id="tier-builder-pool" class="hero-tier-pool" aria-live="polite"></div>
       </section>
 
       <section class="hero-tier-board">
@@ -49,15 +98,16 @@
             <p class="eyebrow">Drag and Drop</p>
             <h2 class="panel-title">Текущие тиры</h2>
           </div>
-          <div id="hero-tier-counter" class="filter-caption">0 героев распределено</div>
+          <div id="tier-builder-counter" class="filter-caption">0 карт распределено</div>
         </div>
 
-        <div id="hero-tier-rows" class="tier-builder-rows"></div>
+        <div id="tier-builder-rows" class="tier-builder-rows"></div>
       </section>
     </main>
   </div>
 
   <script src="./tier-data.js"></script>
+  <script src="./accessories-data.js"></script>
   <script src="./hero-tier-builder.js"></script>
 </body>
 </html>

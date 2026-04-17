@@ -19,12 +19,12 @@
   const EXPORT_TOP_PADDING = 70;
   const EXPORT_BOTTOM_PADDING = 70;
   const EXPORT_COLUMN_GAP = 82;
-  const EXPORT_ROW_GAP = 108;
+  const EXPORT_ROW_GAP = 94;
   const SLOT_CARD_WIDTH = 0.142;
   const BOARD_INSET_X = 0.048;
   const BOARD_INSET_Y = 0.08;
   const BOARD_COLUMN_GAP = 0.035;
-  const BOARD_ROW_GAP = 0.128;
+  const BOARD_ROW_GAP = 0.116;
 
   const raceNames = {
     NONE: "Без типа",

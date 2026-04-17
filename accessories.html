@@ -12,8 +12,7 @@
       <a class="brand-mark" href="./index.html">Battlegrounds Hub</a>
       <nav class="site-nav" aria-label="Основная навигация">
         <a class="nav-link" href="./index.html">Главная</a>
-        <a class="nav-link" href="./tier-list.html">Тир-лист</a>
-        <a class="nav-link" href="./hero-tier-builder.html">Конструктор тиров</a>
+        <a class="nav-link" href="./hero-tier-builder.html">Конструктор тир-листов</a>
         <a class="nav-link" href="./library.html">Библиотека карт</a>
         <a class="nav-link" href="./blizzard-spells.html">Заклинания</a>
         <a class="nav-link is-active" href="./accessories.html">Аксессуары</a>
@@ -59,6 +58,24 @@
         <div id="accessories-grid" class="library-card-grid library-card-grid-flat" aria-live="polite"></div>
       </section>
     </main>
+  </div>
+
+  <div id="lightbox" class="lightbox" hidden>
+    <div class="lightbox-backdrop" data-close-lightbox="true"></div>
+    <div class="lightbox-dialog" role="dialog" aria-modal="true" aria-labelledby="lightbox-title">
+      <button class="lightbox-close" type="button" data-close-lightbox="true" aria-label="Закрыть">×</button>
+      <button class="lightbox-nav lightbox-prev" id="lightbox-prev" type="button" aria-label="Предыдущая карта">‹</button>
+      <div class="lightbox-body">
+        <img id="lightbox-image" class="lightbox-image" alt="">
+        <div class="lightbox-copy">
+          <p id="lightbox-kicker" class="eyebrow">Battlegrounds Accessory</p>
+          <h2 id="lightbox-title"></h2>
+          <p id="lightbox-meta" class="lightbox-meta"></p>
+          <p id="lightbox-text" class="lightbox-text"></p>
+        </div>
+      </div>
+      <button class="lightbox-nav lightbox-next" id="lightbox-next" type="button" aria-label="Следующая карта">›</button>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
