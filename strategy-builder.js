@@ -290,7 +290,7 @@
       id: card.id,
       name: card.name,
       source: card.source,
-      artUrl: getCardArtUrl(card, "1024x"),
+      artUrl: getCardArtUrl(card, "512x"),
       slot
     };
 
@@ -402,10 +402,21 @@
       return;
     }
 
-    const entries = await Promise.all(state.placed.map(async (card) => ({
-      card,
-      image: await window.Shared.loadImageFromSource(card.artUrl)
-    })));
+    const loadedEntries = await Promise.all(state.placed.map(async (card) => {
+      try {
+        const image = await window.Shared.loadImageFromSource(card.artUrl);
+        return { card, image };
+      } catch (error) {
+        console.warn(`Не удалось загрузить карту ${card.name}:`, error);
+        return null;
+      }
+    }));
+    const entries = loadedEntries.filter(Boolean);
+
+    if (!entries.length) {
+      setStatus("Не удалось загрузить ни одной карты для экспорта.");
+      return;
+    }
 
     const occupiedRows = [...new Set(entries.map(({ card }) => Math.floor(card.slot / BOARD_COLUMNS)))].sort((a, b) => a - b);
     const rowMap = new Map(occupiedRows.map((row, index) => [row, index]));
