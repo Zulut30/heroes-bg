@@ -562,7 +562,8 @@
       name: card.name,
       source: card.source,
       artUrl: getCardArtUrl(card, "512x"),
-      slot
+      slot,
+      highlighted: false
     };
 
     state.placed.push(placedCard);
@@ -578,6 +579,38 @@
     }
 
     renderBoard();
+  }
+
+  function toggleHighlight(uid) {
+    const target = state.placed.find((card) => card.uid === uid);
+    if (!target) {
+      return;
+    }
+    target.highlighted = !target.highlighted;
+    state.activeId = uid;
+    renderBoard();
+  }
+
+  const tileTap = { uid: null, timer: null };
+  const DOUBLE_CLICK_MS = 260;
+
+  function handleTileTap(uid) {
+    if (tileTap.uid === uid && tileTap.timer !== null) {
+      window.clearTimeout(tileTap.timer);
+      tileTap.timer = null;
+      tileTap.uid = null;
+      removePlacedCard(uid);
+      return;
+    }
+    if (tileTap.timer !== null) {
+      window.clearTimeout(tileTap.timer);
+    }
+    tileTap.uid = uid;
+    tileTap.timer = window.setTimeout(() => {
+      tileTap.timer = null;
+      tileTap.uid = null;
+      toggleHighlight(uid);
+    }, DOUBLE_CLICK_MS);
   }
 
   function movePlacedCardToSlot(uid, targetSlot) {
@@ -628,7 +661,10 @@
     state.placed.forEach((card) => {
       const slotPosition = getSlotPosition(card.slot);
       const tile = document.createElement("article");
-      tile.className = `placed-card${state.activeId === card.uid ? " is-active" : ""}`;
+      const classes = ["placed-card"];
+      if (state.activeId === card.uid) classes.push("is-active");
+      if (card.highlighted) classes.push("is-highlighted");
+      tile.className = classes.join(" ");
       tile.style.left = `${slotPosition.x * 100}%`;
       tile.style.top = `${slotPosition.y * 100}%`;
       tile.innerHTML = `
@@ -640,13 +676,28 @@
         if (event.target.closest(".placed-card-remove")) {
           return;
         }
+        if (event.button !== undefined && event.button !== 0) {
+          return;
+        }
 
-        state.activeId = card.uid;
-        state.draggingPlaced = true;
+        const startX = event.clientX;
+        const startY = event.clientY;
+        const DRAG_THRESHOLD = 5;
+        let dragging = false;
         const boardRect = boardEl.getBoundingClientRect();
-        tile.classList.add("is-dragging");
 
         const move = (moveEvent) => {
+          const dx = moveEvent.clientX - startX;
+          const dy = moveEvent.clientY - startY;
+          if (!dragging) {
+            if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) {
+              return;
+            }
+            dragging = true;
+            state.activeId = card.uid;
+            state.draggingPlaced = true;
+            tile.classList.add("is-dragging");
+          }
           const localX = moveEvent.clientX - boardRect.left;
           const localY = moveEvent.clientY - boardRect.top;
           tile.style.left = `${localX}px`;
@@ -656,9 +707,13 @@
         const release = (releaseEvent) => {
           window.removeEventListener("pointermove", move);
           window.removeEventListener("pointerup", release);
-          tile.classList.remove("is-dragging");
-          state.draggingPlaced = false;
-          movePlacedCardToSlot(card.uid, getNearestSlot(releaseEvent.clientX, releaseEvent.clientY));
+          if (dragging) {
+            tile.classList.remove("is-dragging");
+            state.draggingPlaced = false;
+            movePlacedCardToSlot(card.uid, getNearestSlot(releaseEvent.clientX, releaseEvent.clientY));
+          } else {
+            handleTileTap(card.uid);
+          }
         };
 
         window.addEventListener("pointermove", move);
@@ -743,7 +798,16 @@
       const x = EXPORT_SIDE_PADDING + column * (cardWidth + EXPORT_COLUMN_GAP);
       const rowTop = EXPORT_TOP_PADDING + compactRow * (maxCardHeight + EXPORT_ROW_GAP);
       const y = rowTop + (maxCardHeight - cardHeight) / 2;
-      ctx.drawImage(image, x, y, cardWidth, cardHeight);
+      if (card.highlighted) {
+        ctx.save();
+        ctx.shadowColor = "rgba(240, 215, 154, 0.85)";
+        ctx.shadowBlur = 36;
+        ctx.drawImage(image, x, y, cardWidth, cardHeight);
+        ctx.restore();
+        ctx.drawImage(image, x, y, cardWidth, cardHeight);
+      } else {
+        ctx.drawImage(image, x, y, cardWidth, cardHeight);
+      }
     }
 
     const mimeType = fileType === "png" ? "image/png" : "image/webp";
