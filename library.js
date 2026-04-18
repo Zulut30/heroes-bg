@@ -291,17 +291,18 @@
     const tile = document.createElement("article");
     tile.className = "card-tile";
     tile.tabIndex = 0;
+    const safeName = window.Shared.escapeHtml(card.name);
     tile.innerHTML = `
       <img
         class="card-art"
         src="${getCardArtUrl(card, "256x")}"
-        alt="${card.name}"
+        alt="${safeName}"
         loading="lazy"
         decoding="async"
         fetchpriority="low"
       >
       <div class="card-copy">
-        <h3 class="card-title">${card.name}</h3>
+        <h3 class="card-title">${safeName}</h3>
       </div>
     `;
 

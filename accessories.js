@@ -97,7 +97,7 @@
         <img
           class="card-art"
           src="${encodeURI(card.image)}"
-          alt="${card.name}"
+          alt="${window.Shared.escapeHtml(card.name)}"
           loading="lazy"
           decoding="async"
           fetchpriority="low"

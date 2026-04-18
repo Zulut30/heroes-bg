@@ -445,7 +445,7 @@
     element.title = `${card.name} — ${getSourceLabel(card)} — ${getCardMeta(card)}`;
     element.innerHTML = `
       <div class="tier-builder-card-media">
-        <img src="${getCardArtUrl(card, "256x")}" alt="${card.name}" loading="lazy" decoding="async">
+        <img src="${getCardArtUrl(card, "256x")}" alt="${window.Shared.escapeHtml(card.name)}" loading="lazy" decoding="async">
       </div>
       <div class="tier-builder-card-actions">
         <button class="tier-builder-card-button" type="button" data-action="prev" aria-label="Сдвинуть раньше">←</button>

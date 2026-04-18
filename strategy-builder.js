@@ -572,17 +572,21 @@
       button.type = "button";
       button.className = `builder-card${card.source === "SPELL" ? " is-spell" : ""}${card.source === "HERO" ? " is-hero" : ""}`;
       button.draggable = true;
+      const safeName = window.Shared.escapeHtml(card.name);
+      const safeMeta = window.Shared.escapeHtml(getLibraryMeta(card));
+      const safeBadge = window.Shared.escapeHtml(getSourceLabel(card));
+      const safeTier = window.Shared.escapeHtml(card.source === "HERO" ? card.heroTier || "?" : `Т${card.techLevel || "?"}`);
       button.innerHTML = `
         <div class="builder-card-media">
-          <img class="builder-card-art" src="${getCardArtUrl(card, "256x")}" alt="${card.name}" loading="lazy" decoding="async">
+          <img class="builder-card-art" src="${getCardArtUrl(card, "256x")}" alt="${safeName}" loading="lazy" decoding="async">
         </div>
         <div class="builder-card-copy">
           <div class="builder-card-topline">
-            <span class="builder-card-badge">${getSourceLabel(card)}</span>
-            <span class="builder-card-tier">${card.source === "HERO" ? card.heroTier || "?" : `Т${card.techLevel || "?"}`}</span>
+            <span class="builder-card-badge">${safeBadge}</span>
+            <span class="builder-card-tier">${safeTier}</span>
           </div>
-          <strong>${card.name}</strong>
-          <span>${getLibraryMeta(card)}</span>
+          <strong>${safeName}</strong>
+          <span>${safeMeta}</span>
         </div>
       `;
 
@@ -1197,7 +1201,7 @@
       tile.style.left = `${slotPosition.x * 100}%`;
       tile.style.top = `${slotPosition.y * 100}%`;
       tile.innerHTML = `
-        <img class="placed-card-art" src="${card.artUrl}" alt="${card.name}">
+        <img class="placed-card-art" src="${card.artUrl}" alt="${window.Shared.escapeHtml(card.name)}">
         <button class="placed-card-remove" type="button" aria-label="Удалить карту">×</button>
       `;
 

@@ -316,11 +316,24 @@
     return resultBlob;
   }
 
+  const HTML_ESCAPE_MAP = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  };
+
+  function escapeHtml(value) {
+    return String(value == null ? "" : value).replace(/[&<>"']/g, (ch) => HTML_ESCAPE_MAP[ch]);
+  }
+
   window.Shared = {
     MAX_DOWNLOAD_SIZE_MB,
     loadImage,
     loadImageFromSource,
     debounce,
-    exportCardSheet
+    exportCardSheet,
+    escapeHtml
   };
 })();
