@@ -1,4 +1,4 @@
-const { fetchBlizzardJson, normalizeLocale, sendJson } = require("./_blizzard");
+const { fetchBlizzardJson, normalizeLocale, sendJson, rateLimit } = require("./_blizzard");
 
 function buildRemoteImageProxyUrl(imageUrl) {
   const normalized = String(imageUrl || "").trim();
@@ -28,6 +28,14 @@ async function fetchAllBattlegroundCards(locale) {
 }
 
 module.exports = async function handler(req, res) {
+  const limit = rateLimit(req, "spells", 60, 60_000);
+  if (!limit.allowed) {
+    res.statusCode = 429;
+    res.setHeader("Retry-After", String(Math.ceil((limit.resetAt - Date.now()) / 1000)));
+    res.end();
+    return;
+  }
+
   const locale = normalizeLocale(req.query.locale || "ru_RU");
   const sortLocale = String(locale).replace("_", "-");
   const pageSize = Math.min(Number(req.query.pageSize) || 200, 500);
@@ -79,6 +87,9 @@ module.exports = async function handler(req, res) {
       locale,
       total: battlegroundCards.filter((card) => card && card.battlegrounds && Number(card.cardTypeId) === 42).length,
       cards
+    }, {
+      ifNoneMatch: req.headers["if-none-match"],
+      cacheControl: "public, s-maxage=3600, stale-while-revalidate=86400"
     });
   } catch (error) {
     sendJson(res, 500, {
