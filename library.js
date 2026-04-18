@@ -327,9 +327,11 @@
     setStatus(`Найдено ${state.filtered.length} карт.`);
     const grid = document.createElement("div");
     grid.className = "library-card-grid library-card-grid-flat";
+    const fragment = document.createDocumentFragment();
     state.filtered.forEach((card, index) => {
-      grid.append(renderCard(card, index));
+      fragment.append(renderCard(card, index));
     });
+    grid.append(fragment);
     resultsEl.append(grid);
   }
 

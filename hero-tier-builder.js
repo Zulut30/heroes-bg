@@ -741,13 +741,16 @@
       return;
     }
 
+    const fragment = document.createDocumentFragment();
     cards.forEach((card) => {
-      poolRoot.append(createCardElement(card.id));
+      fragment.append(createCardElement(card.id));
     });
+    poolRoot.append(fragment);
   }
 
   function renderRows() {
     rowsRoot.innerHTML = "";
+    const rowsFragment = document.createDocumentFragment();
 
     TIER_ORDER.forEach((tier) => {
       const row = document.createElement("section");
@@ -779,14 +782,17 @@
         empty.textContent = "Перетащи сюда карты из пула слева.";
         zone.append(empty);
       } else {
-        cards.forEach((card) => zone.append(createCardElement(card.id)));
+        const zoneFragment = document.createDocumentFragment();
+        cards.forEach((card) => zoneFragment.append(createCardElement(card.id)));
+        zone.append(zoneFragment);
       }
 
       row.append(zone);
       row.querySelector('[data-export="png"]').addEventListener("click", () => exportTier(tier, "png"));
       row.querySelector('[data-export="webp"]').addEventListener("click", () => exportTier(tier, "webp"));
-      rowsRoot.append(row);
+      rowsFragment.append(row);
     });
+    rowsRoot.append(rowsFragment);
   }
 
   function render() {
@@ -879,10 +885,10 @@
     }
   }
 
-  searchInput.addEventListener("input", (event) => {
+  searchInput.addEventListener("input", window.Shared.debounce((event) => {
     state.search = event.target.value.trim();
     render();
-  });
+  }, 120));
 
   resetButton.addEventListener("click", () => {
     state.search = "";

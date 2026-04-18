@@ -566,6 +566,7 @@
     const accessoryCount = state.filtered.filter((card) => card.source === "ACCESSORY").length;
     setStatus(`Доступно ${state.filtered.length} карт: ${heroCount} героев, ${minionCount} существ, ${spellCount} заклинаний и ${accessoryCount} аксессуаров.`);
 
+    const fragment = document.createDocumentFragment();
     state.filtered.forEach((card) => {
       const button = document.createElement("button");
       button.type = "button";
@@ -600,8 +601,9 @@
       });
 
       button.addEventListener("click", () => addCardToBoard(card));
-      libraryEl.append(button);
+      fragment.append(button);
     });
+    libraryEl.append(fragment);
   }
 
   function addCardToBoard(card, preferredSlot = null) {

@@ -58,7 +58,9 @@ body::before {
   background:
     linear-gradient(180deg, rgba(3, 8, 16, 0.1), rgba(3, 8, 16, 0.18)),
     url("./wallpaper.jpg") center / cover no-repeat;
-  transform: scale(1.02);
+  transform: scale(1.02) translateZ(0);
+  will-change: transform;
+  contain: strict;
 }
 
 body::after {
