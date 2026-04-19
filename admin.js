@@ -21,7 +21,6 @@
 
   const TIER_ORDER = ["S", "A", "B", "C", "D"];
   const POOL_KEY = "POOL";
-  const STORAGE_KEY = "admin-comps-draft-v1";
   const DIFFICULTIES = ["Easy", "Medium", "Hard"];
   const TRENDS = [
     { value: "up", label: "▲" },
@@ -44,9 +43,34 @@
   };
   const RACE_OPTIONS = Object.keys(RACE_ICON);
 
+  const LIST_SOURCES = ["firestone", "hsreplay"];
+  const LIST_LABELS = { firestone: "Firestone", hsreplay: "HSReplay" };
+  const STORAGE_KEYS = {
+    firestone: "admin-comps-draft-firestone-v1",
+    hsreplay: "admin-comps-draft-hsreplay-v1"
+  };
+  const PUBLIC_FILES = {
+    firestone: "./comps-firestone.json",
+    hsreplay: "./comps-hsreplay.json"
+  };
+  const SOURCE_URLS = {
+    firestone: "https://www.firestoneapp.com/battlegrounds/comps?rank=25",
+    hsreplay: "https://hsreplay.net/battlegrounds/comps/"
+  };
+
+  function emptyList() {
+    return {
+      comps: new Map(),
+      placements: { [POOL_KEY]: [], S: [], A: [], B: [], C: [], D: [] }
+    };
+  }
+
   const state = {
-    comps: new Map(), // uid -> normalized comp
-    placements: { [POOL_KEY]: [], S: [], A: [], B: [], C: [], D: [] },
+    activeList: loadActiveList(),
+    lists: {
+      firestone: emptyList(),
+      hsreplay: emptyList()
+    },
     sourceFilter: "ALL",
     search: ""
   };
@@ -65,61 +89,83 @@
     statusEl.dataset.tone = tone || "";
   }
 
-  function loadDraft() {
+  function loadActiveList() {
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
+      const stored = window.localStorage.getItem("admin-active-list-v1");
+      if (stored && LIST_SOURCES.includes(stored)) return stored;
+    } catch (error) { /* ignore */ }
+    return "firestone";
+  }
+
+  function persistActiveList() {
+    try {
+      window.localStorage.setItem("admin-active-list-v1", state.activeList);
+    } catch (error) { /* ignore */ }
+  }
+
+  function currentList() {
+    return state.lists[state.activeList];
+  }
+
+  function loadDraft(listKey) {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEYS[listKey]);
       if (!raw) return false;
       const parsed = JSON.parse(raw);
       if (!parsed || !Array.isArray(parsed.comps)) return false;
-      state.comps = new Map();
+      const list = state.lists[listKey];
+      list.comps = new Map();
       parsed.comps.forEach((comp) => {
         const uid = comp.uid || makeUid();
-        state.comps.set(uid, { ...comp, uid });
+        list.comps.set(uid, { ...comp, uid });
       });
-      state.placements = { [POOL_KEY]: [], S: [], A: [], B: [], C: [], D: [] };
-      const valid = new Set(state.comps.keys());
+      list.placements = { [POOL_KEY]: [], S: [], A: [], B: [], C: [], D: [] };
+      const valid = new Set(list.comps.keys());
       [POOL_KEY, ...TIER_ORDER].forEach((bucket) => {
-        const list = parsed.placements?.[bucket] || [];
-        state.placements[bucket] = list.filter((uid) => valid.has(uid));
+        const arr = parsed.placements?.[bucket] || [];
+        list.placements[bucket] = arr.filter((uid) => valid.has(uid));
       });
-      const placed = new Set([...Object.values(state.placements).flat()]);
-      [...state.comps.keys()].forEach((uid) => {
-        if (!placed.has(uid)) state.placements[POOL_KEY].push(uid);
+      const placed = new Set([...Object.values(list.placements).flat()]);
+      [...list.comps.keys()].forEach((uid) => {
+        if (!placed.has(uid)) list.placements[POOL_KEY].push(uid);
       });
       return true;
     } catch (error) {
-      console.warn("Не удалось прочитать черновик", error);
+      console.warn("Не удалось прочитать черновик", listKey, error);
       return false;
     }
   }
 
-  function saveDraft() {
+  function saveDraft(listKey = state.activeList) {
+    const list = state.lists[listKey];
+    if (!list) return;
     try {
       const payload = {
         savedAt: new Date().toISOString(),
-        comps: [...state.comps.values()],
-        placements: state.placements
+        comps: [...list.comps.values()],
+        placements: list.placements
       };
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      window.localStorage.setItem(STORAGE_KEYS[listKey], JSON.stringify(payload));
     } catch (error) {
-      console.warn("Не удалось сохранить черновик", error);
+      console.warn("Не удалось сохранить черновик", listKey, error);
     }
   }
 
-  function ingestFromSources(payload) {
-    const incoming = (payload?.comps || []).filter(Boolean);
-    if (!incoming.length) return 0;
-    // Deduplicate already-known by sourceId; keep edits the admin made.
-    const knownBySource = new Map();
-    state.comps.forEach((comp) => {
-      if (comp.sourceId) knownBySource.set(comp.sourceId, comp.uid);
+  function ingestComps(rawComps, opts = {}) {
+    if (!Array.isArray(rawComps) || !rawComps.length) return 0;
+    const targetKey = opts.targetList || state.activeList;
+    const list = state.lists[targetKey];
+    const known = new Map();
+    list.comps.forEach((comp) => {
+      if (comp.sourceId) known.set(comp.sourceId, comp.uid);
     });
     let added = 0;
-    incoming.forEach((rawComp) => {
-      const sourceId = rawComp.sourceId || `${rawComp.source}:${rawComp.name}`;
-      if (knownBySource.has(sourceId)) return;
-      const uid = makeUid(rawComp.source);
-      const comp = {
+    rawComps.forEach((rawComp) => {
+      if (!rawComp) return;
+      const sourceId = rawComp.sourceId || `${rawComp.source || "manual"}:${rawComp.name}`;
+      if (known.has(sourceId)) return;
+      const uid = makeUid(rawComp.source || "comp");
+      list.comps.set(uid, {
         uid,
         sourceId,
         source: rawComp.source || "manual",
@@ -131,30 +177,31 @@
         difficulty: rawComp.difficulty || "Medium",
         trend: rawComp.trend || "stable",
         cards: (rawComp.cards || []).map((card) => ({ id: card.id || "", name: card.name || "" }))
-      };
-      state.comps.set(uid, comp);
-      state.placements[POOL_KEY].push(uid);
+      });
+      list.placements[POOL_KEY].push(uid);
       added += 1;
     });
     return added;
   }
 
   function getBucketForUid(uid) {
-    return [POOL_KEY, ...TIER_ORDER].find((bucket) => state.placements[bucket].includes(uid));
+    const placements = currentList().placements;
+    return [POOL_KEY, ...TIER_ORDER].find((bucket) => placements[bucket].includes(uid));
   }
 
   function moveCompTo(uid, bucket, indexOverride) {
+    const placements = currentList().placements;
     const current = getBucketForUid(uid);
     if (!current) return;
-    state.placements[current] = state.placements[current].filter((id) => id !== uid);
-    const target = state.placements[bucket];
+    placements[current] = placements[current].filter((id) => id !== uid);
+    const target = placements[bucket];
     if (typeof indexOverride === "number" && indexOverride >= 0) {
       target.splice(Math.min(indexOverride, target.length), 0, uid);
     } else {
       target.push(uid);
     }
     if (bucket !== POOL_KEY) {
-      const comp = state.comps.get(uid);
+      const comp = currentList().comps.get(uid);
       if (comp) comp.tier = bucket;
     }
     saveDraft();
@@ -164,7 +211,7 @@
   function reorderInBucket(uid, direction) {
     const bucket = getBucketForUid(uid);
     if (!bucket) return;
-    const list = state.placements[bucket];
+    const list = currentList().placements[bucket];
     const index = list.indexOf(uid);
     const target = index + direction;
     if (target < 0 || target >= list.length) return;
@@ -175,25 +222,26 @@
   }
 
   function deleteComp(uid) {
-    if (!confirm("Удалить эту стратегию из админки?")) return;
-    state.comps.delete(uid);
+    if (!confirm("Удалить эту стратегию из активного листа?")) return;
+    const list = currentList();
+    list.comps.delete(uid);
     [POOL_KEY, ...TIER_ORDER].forEach((bucket) => {
-      state.placements[bucket] = state.placements[bucket].filter((id) => id !== uid);
+      list.placements[bucket] = list.placements[bucket].filter((id) => id !== uid);
     });
     saveDraft();
     render();
   }
 
   function updateComp(uid, patch) {
-    const comp = state.comps.get(uid);
+    const comp = currentList().comps.get(uid);
     if (!comp) return;
     Object.assign(comp, patch);
     saveDraft();
   }
 
   function buildSourceChips() {
-    const sources = ["ALL", ...new Set([...state.comps.values()].map((c) => c.source))];
-    const labels = { ALL: "Все источники", firestone: "Firestone", hsreplay: "HSReplay", manual: "Ручные" };
+    const sources = ["ALL", ...new Set([...currentList().comps.values()].map((c) => c.source))];
+    const labels = { ALL: "Все источники", firestone: "Firestone", hsreplay: "HSReplay", manual: "Ручные", imported: "Импорт", published: "Опубликованные" };
     sourceFiltersEl.replaceChildren();
     sources.forEach((value) => {
       const button = document.createElement("button");
@@ -219,7 +267,7 @@
   }
 
   function renderCompCard(uid, options = {}) {
-    const comp = state.comps.get(uid);
+    const comp = currentList().comps.get(uid);
     if (!comp) return null;
     const article = document.createElement("article");
     article.className = `admin-comp${options.compact ? " admin-comp-compact" : ""}`;
@@ -281,15 +329,13 @@
         const value = input.value;
         const patch = { [field]: value };
         if (field === "tier" && getBucketForUid(uid) !== POOL_KEY) {
-          // Move card to new tier when admin changes the dropdown
-          const targetIndex = state.placements[value]?.length ?? 0;
           updateComp(uid, patch);
-          moveCompTo(uid, value, targetIndex);
+          moveCompTo(uid, value);
           return;
         }
         updateComp(uid, patch);
       });
-      if (input.tagName === "TEXTAREA" || (input.classList.contains("admin-name") || input.classList.contains("admin-subtitle"))) {
+      if (input.tagName === "TEXTAREA" || input.classList.contains("admin-name") || input.classList.contains("admin-subtitle")) {
         input.addEventListener("input", () => {
           updateComp(uid, { [input.dataset.field]: input.value });
         });
@@ -315,14 +361,15 @@
 
   function renderPool() {
     poolListEl.replaceChildren();
-    const ids = state.placements[POOL_KEY].filter((uid) => {
-      const comp = state.comps.get(uid);
+    const list = currentList();
+    const ids = list.placements[POOL_KEY].filter((uid) => {
+      const comp = list.comps.get(uid);
       return comp && compMatchesFilters(comp);
     });
     if (!ids.length) {
       const empty = document.createElement("p");
       empty.className = "tier-builder-empty";
-      empty.textContent = state.comps.size ? "Все стратегии распределены." : "Нажми «Обновить из источников».";
+      empty.textContent = list.comps.size ? "Все стратегии распределены." : "Пул пуст. Нажми «Обновить из источников» или «+ Добавить вручную».";
       poolListEl.append(empty);
       return;
     }
@@ -336,12 +383,13 @@
 
   function renderTiers() {
     tiersEl.replaceChildren();
+    const placements = currentList().placements;
     const fragment = document.createDocumentFragment();
     TIER_ORDER.forEach((tier) => {
       const wrap = document.createElement("section");
       wrap.className = `admin-tier admin-tier-${tier.toLowerCase()}`;
       wrap.dataset.tier = tier;
-      const ids = state.placements[tier];
+      const ids = placements[tier];
       const placedHtml = ids.length ? "" : '<p class="tier-builder-empty">Перетащи сюда стратегию или нажми кнопку с буквой тира.</p>';
       wrap.innerHTML = `
         <header class="admin-tier-head">
@@ -366,7 +414,7 @@
         event.preventDefault();
         listEl.classList.remove("is-drop-target");
         const uid = event.dataTransfer.getData("text/plain");
-        if (!uid || !state.comps.has(uid)) return;
+        if (!uid || !currentList().comps.has(uid)) return;
         moveCompTo(uid, tier);
       });
 
@@ -375,17 +423,32 @@
     tiersEl.append(fragment);
   }
 
+  function renderActiveListToggle() {
+    document.querySelectorAll(".admin-source-btn").forEach((btn) => {
+      const isActive = btn.dataset.source === state.activeList;
+      btn.classList.toggle("is-active", isActive);
+      btn.setAttribute("aria-selected", isActive ? "true" : "false");
+      const list = state.lists[btn.dataset.source];
+      const countEl = btn.querySelector("[data-count]");
+      if (countEl) {
+        countEl.textContent = list ? `· ${list.comps.size}` : "";
+      }
+    });
+  }
+
   function render() {
+    renderActiveListToggle();
     buildSourceChips();
     renderPool();
     renderTiers();
   }
 
   function exportCompsJson() {
+    const list = currentList();
     const tieredComps = [];
     TIER_ORDER.forEach((tier) => {
-      state.placements[tier].forEach((uid) => {
-        const comp = state.comps.get(uid);
+      list.placements[tier].forEach((uid) => {
+        const comp = list.comps.get(uid);
         if (!comp) return;
         tieredComps.push({
           tier,
@@ -400,25 +463,24 @@
       });
     });
     const payload = {
-      source: "admin",
+      source: state.activeList,
+      sourceUrl: SOURCE_URLS[state.activeList],
+      sourceLabel: LIST_LABELS[state.activeList],
       updatedAt: new Date().toISOString().slice(0, 10),
-      sources: [
-        "https://www.firestoneapp.com/battlegrounds/comps?rank=25",
-        "https://hsreplay.net/battlegrounds/comps/"
-      ],
       tiers: TIER_ORDER,
       comps: tieredComps
     };
+    const fileName = `comps-${state.activeList}.json`;
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "comps.json";
+    link.download = fileName;
     document.body.append(link);
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1500);
-    setStatus(`Экспортировано ${tieredComps.length} стратегий. Положи файл в корень репозитория.`, "ok");
+    setStatus(`Экспортировано ${tieredComps.length} стратегий → ${fileName}. Положи файл в корень репозитория.`, "ok");
   }
 
   function renderDiagnostics(payload) {
@@ -456,19 +518,23 @@
       const response = await fetch(url, { cache: "no-store" });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const payload = await response.json();
-      const added = ingestFromSources(payload);
-      const fs = payload.sources?.firestone?.count || 0;
-      const hr = payload.sources?.hsreplay?.count || 0;
-      sourceStatusEl.textContent = `Firestone: ${fs} · HSReplay: ${hr} · добавлено новых: ${added}`;
+      // Route comps to their respective lists.
+      const firestoneComps = (payload.comps || []).filter((c) => c.source === "firestone");
+      const hsreplayComps = (payload.comps || []).filter((c) => c.source === "hsreplay");
+      const addedFs = ingestComps(firestoneComps, { targetList: "firestone" });
+      const addedHr = ingestComps(hsreplayComps, { targetList: "hsreplay" });
+      saveDraft("firestone");
+      saveDraft("hsreplay");
       renderDiagnostics(payload);
-      saveDraft();
+      const totalAdded = addedFs + addedHr;
+      sourceStatusEl.textContent = `Firestone: ${payload.sources?.firestone?.count || 0} (новых ${addedFs}) · HSReplay: ${payload.sources?.hsreplay?.count || 0} (новых ${addedHr})`;
       render();
-      if (added) {
-        setStatus(`Добавлено ${added} новых стратегий.`, "ok");
-      } else if (fs + hr === 0) {
-        setStatus("Источники сейчас не отдают данные. Раскрой «Диагностику источников» ниже, либо добавь стратегии вручную / из опубликованного.", "error");
+      if (totalAdded) {
+        setStatus(`Добавлено новых: ${totalAdded}. Активный лист: ${LIST_LABELS[state.activeList]}.`, "ok");
+      } else if ((payload.sources?.firestone?.count || 0) + (payload.sources?.hsreplay?.count || 0) === 0) {
+        setStatus("Источники сейчас не отдают данные. Раскрой «Диагностику источников» или импортируй вручную.", "error");
       } else {
-        setStatus("Все полученные стратегии уже есть в админке.", "ok");
+        setStatus("Все полученные стратегии уже есть в листах.", "ok");
       }
     } catch (error) {
       console.error(error);
@@ -480,7 +546,8 @@
 
   function addManualComp() {
     const uid = makeUid("manual");
-    state.comps.set(uid, {
+    const list = currentList();
+    list.comps.set(uid, {
       uid,
       sourceId: `manual:${uid}`,
       source: "manual",
@@ -493,54 +560,48 @@
       trend: "stable",
       cards: []
     });
-    state.placements[POOL_KEY].unshift(uid);
+    list.placements[POOL_KEY].unshift(uid);
     saveDraft();
     render();
-    setStatus("Создана пустая стратегия — заполни поля.", "ok");
+    setStatus(`Создана пустая стратегия в листе ${LIST_LABELS[state.activeList]}.`, "ok");
   }
 
   function clearDraft() {
-    if (!confirm("Стереть весь черновик и начать с пустого листа?")) return;
-    window.localStorage.removeItem(STORAGE_KEY);
-    state.comps = new Map();
-    state.placements = { [POOL_KEY]: [], S: [], A: [], B: [], C: [], D: [] };
-    diagnosticsEl.hidden = true;
+    if (!confirm(`Стереть весь черновик листа ${LIST_LABELS[state.activeList]} и начать с пустого листа?`)) return;
+    window.localStorage.removeItem(STORAGE_KEYS[state.activeList]);
+    state.lists[state.activeList] = emptyList();
+    if (state.activeList === "firestone" || state.activeList === "hsreplay") {
+      // diagnostics не относятся к конкретному листу — оставим
+    }
     sourceStatusEl.textContent = "";
-    setStatus("Черновик очищен.", "ok");
+    setStatus(`Черновик ${LIST_LABELS[state.activeList]} очищен.`, "ok");
     render();
   }
 
   async function loadPublishedComps() {
     try {
-      const response = await fetch("./comps.json", { cache: "no-cache" });
+      const url = PUBLIC_FILES[state.activeList];
+      const response = await fetch(url, { cache: "no-cache" });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const payload = await response.json();
-      let imported = 0;
-      (payload.comps || []).forEach((comp) => {
-        const sourceId = `published:${comp.tier}:${comp.name}`;
-        const exists = [...state.comps.values()].some((c) => c.sourceId === sourceId);
-        if (exists) return;
-        const uid = makeUid("published");
-        state.comps.set(uid, {
-          uid, sourceId,
-          source: "published",
-          tier: comp.tier || "B",
-          race: comp.race || "NONE",
-          name: comp.name || "",
-          subtitle: comp.subtitle || "",
-          summary: comp.summary || "",
-          difficulty: comp.difficulty || "Medium",
-          trend: comp.trend || "stable",
-          cards: (comp.cards || []).map((c) => ({ id: c.id || "", name: c.name || "" }))
-        });
-        state.placements[comp.tier && TIER_ORDER.includes(comp.tier) ? comp.tier : POOL_KEY].push(uid);
-        imported += 1;
-      });
+      const incoming = (payload.comps || []).map((comp) => ({
+        sourceId: `published:${state.activeList}:${comp.tier}:${comp.name}`,
+        source: "published",
+        tier: comp.tier || "B",
+        race: comp.race || "NONE",
+        name: comp.name || "",
+        subtitle: comp.subtitle || "",
+        summary: comp.summary || "",
+        difficulty: comp.difficulty || "Medium",
+        trend: comp.trend || "stable",
+        cards: (comp.cards || []).map((c) => ({ id: c.id || "", name: c.name || "" }))
+      }));
+      const added = ingestComps(incoming, { targetList: state.activeList });
       saveDraft();
       render();
-      setStatus(`Загружено ${imported} стратегий из текущего comps.json.`, "ok");
+      setStatus(`Загружено ${added} стратегий из ${url} в активный лист.`, "ok");
     } catch (error) {
-      setStatus(`Не удалось загрузить опубликованный comps.json: ${error.message}`, "error");
+      setStatus(`Не удалось загрузить опубликованный JSON: ${error.message}`, "error");
     }
   }
 
@@ -586,7 +647,7 @@
         name: card?.name || ""
       })).filter((c) => c.id || c.name)
     }));
-    return ingestFromSources({ comps: incoming });
+    return ingestComps(incoming, { targetList: state.activeList });
   }
 
   async function importFromUrl() {
@@ -617,8 +678,8 @@
       const added = adoptComps(list, "imported");
       saveDraft();
       render();
-      importResultEl.textContent = `Найдено ${list.length}, добавлено новых: ${added}.`;
-      setStatus(`Импортировано из URL: ${added} новых стратегий.`, "ok");
+      importResultEl.textContent = `Найдено ${list.length}, добавлено новых: ${added} в лист ${LIST_LABELS[state.activeList]}.`;
+      setStatus(`Импортировано из URL: ${added} новых стратегий в ${LIST_LABELS[state.activeList]}.`, "ok");
     } catch (error) {
       importResultEl.textContent = `Ошибка: ${error.message}`;
     } finally {
@@ -645,13 +706,23 @@
     const added = adoptComps(list, "imported");
     saveDraft();
     render();
-    importResultEl.textContent = `Найдено ${list.length}, добавлено новых: ${added}.`;
-    setStatus(`Импортировано из JSON: ${added} новых стратегий.`, "ok");
+    importResultEl.textContent = `Найдено ${list.length}, добавлено новых: ${added} в лист ${LIST_LABELS[state.activeList]}.`;
+    setStatus(`Импортировано из JSON: ${added} новых стратегий в ${LIST_LABELS[state.activeList]}.`, "ok");
+  }
+
+  function setActiveList(nextList) {
+    if (!LIST_SOURCES.includes(nextList) || nextList === state.activeList) return;
+    state.activeList = nextList;
+    persistActiveList();
+    state.sourceFilter = "ALL";
+    state.search = "";
+    if (searchInput) searchInput.value = "";
+    render();
   }
 
   refreshBtn.addEventListener("click", () => refreshFromSources(true));
   addManualBtn.addEventListener("click", addManualComp);
-  saveLocalBtn.addEventListener("click", () => { saveDraft(); setStatus("Черновик сохранён в браузере.", "ok"); });
+  saveLocalBtn.addEventListener("click", () => { saveDraft(); setStatus(`Черновик ${LIST_LABELS[state.activeList]} сохранён в браузере.`, "ok"); });
   exportBtn.addEventListener("click", exportCompsJson);
   loadPublishedBtn.addEventListener("click", loadPublishedComps);
   clearDraftBtn.addEventListener("click", clearDraft);
@@ -661,9 +732,15 @@
     state.search = event.target.value.trim();
     renderPool();
   }, 120));
+  document.querySelectorAll(".admin-source-btn").forEach((btn) => {
+    btn.addEventListener("click", () => setActiveList(btn.dataset.source));
+  });
 
-  if (loadDraft()) {
-    setStatus(`Восстановлен черновик (${state.comps.size} стратегий).`, "ok");
+  // Bootstrap: load drafts for both lists, render, then refresh in background.
+  let anyDraft = false;
+  LIST_SOURCES.forEach((listKey) => { if (loadDraft(listKey)) anyDraft = true; });
+  if (anyDraft) {
+    setStatus(`Восстановлены черновики (Firestone: ${state.lists.firestone.comps.size}, HSReplay: ${state.lists.hsreplay.comps.size}).`, "ok");
     render();
   } else {
     render();

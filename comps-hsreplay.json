@@ -1,0 +1,152 @@
+{
+  "source": "hsreplay",
+  "sourceUrl": "https://hsreplay.net/battlegrounds/comps/",
+  "sourceLabel": "HSReplay",
+  "updatedAt": "2026-04-18",
+  "tiers": ["S", "A", "B", "C", "D"],
+  "comps": [
+    {
+      "tier": "S",
+      "race": "DEMON",
+      "name": "Демоны — Tichondrius core",
+      "subtitle": "Demons - Big Demons",
+      "summary": "Тихондрий + усиление демонов в магазине, потребление союзников.",
+      "difficulty": "Medium",
+      "trend": "up",
+      "cards": [
+        { "id": "BG26_523", "name": "Тихондрий" },
+        { "id": "BG26_525", "name": "Внушительная барабанщица" },
+        { "id": "BG26_524", "name": "Малчезар, принц танца" },
+        { "id": "BG34_500", "name": "Пламенный каратель" }
+      ]
+    },
+    {
+      "tier": "S",
+      "race": "PIRATE",
+      "name": "Пираты — Bounty board",
+      "subtitle": "Pirates - Bounty",
+      "summary": "Доска наград качает золото и трибы; масштабируется на поздних ходах.",
+      "difficulty": "Hard",
+      "trend": "stable",
+      "cards": [
+        { "id": "BG33_822", "name": "Босс бандитов" },
+        { "id": "BG26_817", "name": "Коллекционер мечей" },
+        { "id": "BG31_824", "name": "Корсар-амбидекстер" },
+        { "id": "BG_LOE_077", "name": "Бранн Бронзобород" }
+      ]
+    },
+    {
+      "tier": "A",
+      "race": "ELEMENTAL",
+      "name": "Элементали — Spell stack",
+      "subtitle": "Elementals - Tavern Spells",
+      "summary": "Скейлим элементалей через спеллы таверны.",
+      "difficulty": "Medium",
+      "trend": "stable",
+      "cards": [
+        { "id": "BG34_865", "name": "Инджиннер-поджигательница" },
+        { "id": "BGS_116", "name": "Обновляющая аномалия" },
+        { "id": "BGS_123", "name": "Буря в таверне" },
+        { "id": "BG31_812", "name": "Гнойрон Защитница" }
+      ]
+    },
+    {
+      "tier": "A",
+      "race": "BEAST",
+      "name": "Звери — Stegodon Rally",
+      "subtitle": "Beasts - Stegodon",
+      "summary": "Экспоненциальный скейл атаки через клич сбора.",
+      "difficulty": "Medium",
+      "trend": "up",
+      "cards": [
+        { "id": "BG34_523", "name": "Охотящаяся тигровая акула" },
+        { "id": "BG26_801", "name": "Рилак-металлист" },
+        { "id": "BG29_808", "name": "Шипастый спаситель" }
+      ]
+    },
+    {
+      "tier": "A",
+      "race": "QUILBOAR",
+      "name": "Свинобразы — Smuggler",
+      "subtitle": "Quilboar - Gem Smuggler",
+      "summary": "Самоцветы во время боя выдают агрессивный скейл.",
+      "difficulty": "Medium",
+      "trend": "stable",
+      "cards": [
+        { "id": "BG28_583", "name": "Геомаг Ругуг" },
+        { "id": "BG30_123", "name": "Бесстрашный гурман" },
+        { "id": "BG35_434", "name": "Наёмник-ритуалист" }
+      ]
+    },
+    {
+      "tier": "A",
+      "race": "MURLOC",
+      "name": "Мурлоки — Family",
+      "subtitle": "Murlocs - Mama / Papa",
+      "summary": "Связки маминых и папиных мурлоков, плюс яд.",
+      "difficulty": "Easy",
+      "trend": "stable",
+      "cards": [
+        { "id": "BG35_140", "name": "Мама Мрргглтон" },
+        { "id": "BG35_141", "name": "Папа Мрргглтон" },
+        { "id": "BG26_137", "name": "Водный счетовод" },
+        { "id": "BG35_143", "name": "Глубоководный вождь" }
+      ]
+    },
+    {
+      "tier": "B",
+      "race": "MECHANICAL",
+      "name": "Механизмы — Magnetic stack",
+      "subtitle": "Mechs - Magnetic",
+      "summary": "Магнетизм в одну машину для танка с щитами и яд-окном.",
+      "difficulty": "Medium",
+      "trend": "stable",
+      "cards": [
+        { "id": "BG35_341", "name": "Зачарованный часовой" },
+        { "id": "BG31_178", "name": "Робосуфлёр" },
+        { "id": "BG33_809", "name": "Божественный искробот" }
+      ]
+    },
+    {
+      "tier": "B",
+      "race": "NAGA",
+      "name": "Наги — Spell scaling",
+      "subtitle": "Nagas - Tavern Spells",
+      "summary": "Заклинания + наги для постоянного скейла.",
+      "difficulty": "Medium",
+      "trend": "down",
+      "cards": [
+        { "id": "BG34_925", "name": "Донный вербовщик" },
+        { "id": "BG33_319", "name": "Жрица Морозной Чешуи" },
+        { "id": "BG35_921", "name": "Глубинный громила" }
+      ]
+    },
+    {
+      "tier": "B",
+      "race": "UNDEAD",
+      "name": "Нежить — Reborn aura",
+      "subtitle": "Undead - Reborn Stack",
+      "summary": "Аура нежити + перерождение для устойчивого роста.",
+      "difficulty": "Medium",
+      "trend": "stable",
+      "cards": [
+        { "id": "BG34_403", "name": "Вечный магнат" },
+        { "id": "BG32_880", "name": "Дружелюбное привидение" }
+      ]
+    },
+    {
+      "tier": "C",
+      "race": "DRAGON",
+      "name": "Драконы — Reborn dragons",
+      "subtitle": "Dragons - Reborn Battlecries",
+      "summary": "Большие драконы с возрождением и боевыми кличами.",
+      "difficulty": "Hard",
+      "trend": "down",
+      "cards": [
+        { "id": "BGS_041", "name": "Калесгос, аспект магии" },
+        { "id": "BG34_632", "name": "Исследователь инкубации" },
+        { "id": "BG29_813", "name": "Упорный поэт" }
+      ]
+    }
+  ]
+}

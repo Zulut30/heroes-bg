@@ -45,6 +45,19 @@
           Подборка популярных композиций из Firestone и HSReplay: тир, сложность и ключевые карты в одном виде.
           Можно отфильтровать по сложности или сборке, кликнуть по карте — она подсветится в библиотеке.
         </p>
+        <div class="strategies-source-toggle" role="tablist" aria-label="Источник тир-листа">
+          <button id="strategies-source-firestone" class="strategies-source-btn" type="button" role="tab" aria-selected="true" data-source="firestone">
+            <span class="strategies-source-icon">★</span>
+            <span class="strategies-source-label">Firestone</span>
+            <span class="strategies-source-count" data-count></span>
+          </button>
+          <button id="strategies-source-hsreplay" class="strategies-source-btn" type="button" role="tab" aria-selected="false" data-source="hsreplay">
+            <span class="strategies-source-icon">⌬</span>
+            <span class="strategies-source-label">HSReplay</span>
+            <span class="strategies-source-count" data-count></span>
+          </button>
+        </div>
+
         <div class="strategies-toolbar">
           <div class="strategies-meta" aria-live="polite">
             <span id="strategies-source">Загружаю стратегии…</span>

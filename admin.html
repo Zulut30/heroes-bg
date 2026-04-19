@@ -31,21 +31,34 @@
       <section class="admin-hero">
         <div>
           <p class="eyebrow">Admin</p>
-          <h1 class="panel-title">Сборка публичного тир-листа стратегий</h1>
+          <h1 class="panel-title">Сборка тир-листов Firestone и HSReplay</h1>
           <p class="hero-copy admin-hero-copy">
-            Тяни стратегии из источников (Firestone и HSReplay) в нужный тир, переименовывай и редактируй прямо в карточке.
-            Когда лист готов — нажми «Скачать <code>comps.json</code>» и положи файл в корень репозитория. Локальный черновик
-            сохраняется в браузере между сессиями.
+            Каждый источник — отдельный лист со своим набором стратегий. Переключайся кнопками выше, редактируй карточки,
+            затем нажми «Скачать» и положи файл в корень репозитория. Файлы:
+            <code>comps-firestone.json</code> и <code>comps-hsreplay.json</code>. Черновики сохраняются в браузере отдельно для каждого листа.
           </p>
         </div>
         <div class="admin-actions">
           <button id="admin-refresh" class="download-button" type="button">Обновить из источников</button>
           <button id="admin-add-manual" class="secondary-button" type="button">+ Добавить вручную</button>
           <button id="admin-save-local" class="secondary-button" type="button">Сохранить черновик</button>
-          <button id="admin-export" class="secondary-button" type="button">Скачать comps.json</button>
+          <button id="admin-export" class="secondary-button" type="button">Скачать активный JSON</button>
           <button id="admin-load-published" class="secondary-button" type="button">Загрузить опубликованный</button>
           <button id="admin-clear-draft" class="secondary-button admin-clear-draft" type="button">Сбросить черновик</button>
         </div>
+      </section>
+
+      <section class="admin-source-toggle" role="tablist" aria-label="Активный лист">
+        <button class="strategies-source-btn admin-source-btn is-active" type="button" role="tab" aria-selected="true" data-source="firestone">
+          <span class="strategies-source-icon">★</span>
+          <span class="strategies-source-label">Firestone лист</span>
+          <span class="strategies-source-count" data-count></span>
+        </button>
+        <button class="strategies-source-btn admin-source-btn" type="button" role="tab" aria-selected="false" data-source="hsreplay">
+          <span class="strategies-source-icon">⌬</span>
+          <span class="strategies-source-label">HSReplay лист</span>
+          <span class="strategies-source-count" data-count></span>
+        </button>
       </section>
 
       <section class="admin-status-bar" aria-live="polite">

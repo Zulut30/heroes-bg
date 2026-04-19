@@ -24,8 +24,23 @@
     ALL: "./assset/общее.webp"
   };
 
+  const SOURCE_STORAGE_KEY = "strategies-source-v1";
+  const SOURCES = {
+    firestone: { url: "./comps-firestone.json", label: "Firestone" },
+    hsreplay: { url: "./comps-hsreplay.json", label: "HSReplay" }
+  };
+
+  function loadInitialSource() {
+    try {
+      const stored = window.localStorage.getItem(SOURCE_STORAGE_KEY);
+      if (stored && SOURCES[stored]) return stored;
+    } catch (error) { /* ignore */ }
+    return "firestone";
+  }
+
   const state = {
-    payload: null,
+    source: loadInitialSource(),
+    payloads: { firestone: null, hsreplay: null },
     difficulty: "ALL",
     tier: "ALL"
   };
@@ -68,9 +83,14 @@
     return button;
   }
 
+  function getCurrentPayload() {
+    return state.payloads[state.source];
+  }
+
   function renderFilters() {
-    if (!state.payload) return;
-    const comps = state.payload.comps || [];
+    const payload = getCurrentPayload();
+    if (!payload) return;
+    const comps = payload.comps || [];
 
     difficultyFiltersEl.replaceChildren();
     difficultyOptions(comps).forEach((option) => {
@@ -98,8 +118,9 @@
   }
 
   function renderList() {
-    if (!state.payload) return;
-    const comps = (state.payload.comps || []).filter(passes);
+    const payload = getCurrentPayload();
+    if (!payload) return;
+    const comps = (payload.comps || []).filter(passes);
 
     listEl.replaceChildren();
 
@@ -170,30 +191,63 @@
   }
 
   function renderMeta() {
-    if (!state.payload) return;
-    const sources = (state.payload.sources || []).length;
-    const total = (state.payload.comps || []).length;
-    const sourceLabel = state.payload.source === "live"
-      ? `Свежие данные · ${sources} источника`
-      : "Курируемая подборка";
-    sourceEl.textContent = `${sourceLabel} · ${total} стратегий`;
-    updatedEl.textContent = state.payload.updatedAt ? `Обновлено: ${state.payload.updatedAt}` : "";
+    const payload = getCurrentPayload();
+    if (!payload) return;
+    const total = (payload.comps || []).length;
+    const label = payload.sourceLabel || SOURCES[state.source].label;
+    sourceEl.textContent = `${label} · ${total} стратегий`;
+    updatedEl.textContent = payload.updatedAt ? `Обновлено: ${payload.updatedAt}` : "";
+  }
+
+  function renderSourceToggle() {
+    document.querySelectorAll(".strategies-source-btn").forEach((btn) => {
+      const isActive = btn.dataset.source === state.source;
+      btn.classList.toggle("is-active", isActive);
+      btn.setAttribute("aria-selected", isActive ? "true" : "false");
+      const payload = state.payloads[btn.dataset.source];
+      const countEl = btn.querySelector("[data-count]");
+      if (countEl) {
+        countEl.textContent = payload && payload.comps ? `· ${payload.comps.length}` : "";
+      }
+    });
+  }
+
+  function setSource(nextSource) {
+    if (!SOURCES[nextSource] || nextSource === state.source) return;
+    state.source = nextSource;
+    try { window.localStorage.setItem(SOURCE_STORAGE_KEY, nextSource); } catch (error) { /* ignore */ }
+    state.difficulty = "ALL";
+    state.tier = "ALL";
+    renderSourceToggle();
+    renderMeta();
+    renderFilters();
+    renderList();
+  }
+
+  async function loadSource(source) {
+    if (state.payloads[source]) return state.payloads[source];
+    try {
+      const response = await fetch(SOURCES[source].url, { cache: "no-cache" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      state.payloads[source] = await response.json();
+      return state.payloads[source];
+    } catch (error) {
+      console.error(`Не удалось загрузить ${source}:`, error);
+      state.payloads[source] = { source, comps: [], sourceLabel: SOURCES[source].label };
+      return state.payloads[source];
+    }
   }
 
   async function bootstrap() {
-    try {
-      const response = await fetch("./comps.json", { cache: "no-cache" });
-      if (!response.ok) {
-        throw new Error(`Comps HTTP ${response.status}`);
-      }
-      state.payload = await response.json();
-      renderMeta();
-      renderFilters();
-      renderList();
-    } catch (error) {
-      console.error(error);
-      sourceEl.textContent = "Не удалось загрузить стратегии.";
-    }
+    document.querySelectorAll(".strategies-source-btn").forEach((btn) => {
+      btn.addEventListener("click", () => setSource(btn.dataset.source));
+    });
+
+    await Promise.all(Object.keys(SOURCES).map(loadSource));
+    renderSourceToggle();
+    renderMeta();
+    renderFilters();
+    renderList();
   }
 
   bootstrap();
