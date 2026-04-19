@@ -1,14 +1,18 @@
 (function () {
   const refreshBtn = document.getElementById("admin-refresh");
+  const addManualBtn = document.getElementById("admin-add-manual");
   const saveLocalBtn = document.getElementById("admin-save-local");
   const exportBtn = document.getElementById("admin-export");
   const loadPublishedBtn = document.getElementById("admin-load-published");
+  const clearDraftBtn = document.getElementById("admin-clear-draft");
   const searchInput = document.getElementById("admin-search");
   const sourceFiltersEl = document.getElementById("admin-source-filters");
   const poolListEl = document.getElementById("admin-pool-list");
   const tiersEl = document.getElementById("admin-tiers");
   const statusEl = document.getElementById("admin-status");
   const sourceStatusEl = document.getElementById("admin-source-status");
+  const diagnosticsEl = document.getElementById("admin-diagnostics");
+  const diagnosticsBodyEl = document.getElementById("admin-diagnostics-body");
 
   const TIER_ORDER = ["S", "A", "B", "C", "D"];
   const POOL_KEY = "POOL";
@@ -412,6 +416,33 @@
     setStatus(`Экспортировано ${tieredComps.length} стратегий. Положи файл в корень репозитория.`, "ok");
   }
 
+  function renderDiagnostics(payload) {
+    if (!payload || !payload.sources) {
+      diagnosticsEl.hidden = true;
+      return;
+    }
+    const block = (label, info) => {
+      if (!info) return "";
+      const errors = (info.errors || []).map((e) => `<li>${escape(e)}</li>`).join("") || "<li>нет ошибок</li>";
+      const used = info.usedSource ? `<p class="admin-diagnostics-used">Источник: <code>${escape(info.usedSource)}</code></p>` : "";
+      return `
+        <div class="admin-diagnostics-block">
+          <h3>${escape(label)} · получено ${info.count || 0}</h3>
+          ${used}
+          <details>
+            <summary>Подробности (${(info.errors || []).length})</summary>
+            <ul>${errors}</ul>
+          </details>
+        </div>`;
+    };
+    diagnosticsBodyEl.innerHTML = `
+      ${block("Firestone", payload.sources.firestone)}
+      ${block("HSReplay", payload.sources.hsreplay)}
+      <p class="admin-diagnostics-note">Запрос обновлён: ${escape(payload.fetchedAt || "")}</p>
+    `;
+    diagnosticsEl.hidden = false;
+  }
+
   async function refreshFromSources(force = false) {
     setStatus("Запрашиваю Firestone и HSReplay…");
     refreshBtn.disabled = true;
@@ -424,15 +455,54 @@
       const fs = payload.sources?.firestone?.count || 0;
       const hr = payload.sources?.hsreplay?.count || 0;
       sourceStatusEl.textContent = `Firestone: ${fs} · HSReplay: ${hr} · добавлено новых: ${added}`;
+      renderDiagnostics(payload);
       saveDraft();
       render();
-      setStatus(added ? `Добавлено ${added} новых стратегий.` : "Источники не отдали новых стратегий.", added ? "ok" : "");
+      if (added) {
+        setStatus(`Добавлено ${added} новых стратегий.`, "ok");
+      } else if (fs + hr === 0) {
+        setStatus("Источники сейчас не отдают данные. Раскрой «Диагностику источников» ниже, либо добавь стратегии вручную / из опубликованного.", "error");
+      } else {
+        setStatus("Все полученные стратегии уже есть в админке.", "ok");
+      }
     } catch (error) {
       console.error(error);
       setStatus(`Ошибка обновления: ${error.message}`, "error");
     } finally {
       refreshBtn.disabled = false;
     }
+  }
+
+  function addManualComp() {
+    const uid = makeUid("manual");
+    state.comps.set(uid, {
+      uid,
+      sourceId: `manual:${uid}`,
+      source: "manual",
+      tier: "B",
+      race: "NONE",
+      name: "Новая стратегия",
+      subtitle: "",
+      summary: "",
+      difficulty: "Medium",
+      trend: "stable",
+      cards: []
+    });
+    state.placements[POOL_KEY].unshift(uid);
+    saveDraft();
+    render();
+    setStatus("Создана пустая стратегия — заполни поля.", "ok");
+  }
+
+  function clearDraft() {
+    if (!confirm("Стереть весь черновик и начать с пустого листа?")) return;
+    window.localStorage.removeItem(STORAGE_KEY);
+    state.comps = new Map();
+    state.placements = { [POOL_KEY]: [], S: [], A: [], B: [], C: [], D: [] };
+    diagnosticsEl.hidden = true;
+    sourceStatusEl.textContent = "";
+    setStatus("Черновик очищен.", "ok");
+    render();
   }
 
   async function loadPublishedComps() {
@@ -470,9 +540,11 @@
   }
 
   refreshBtn.addEventListener("click", () => refreshFromSources(true));
+  addManualBtn.addEventListener("click", addManualComp);
   saveLocalBtn.addEventListener("click", () => { saveDraft(); setStatus("Черновик сохранён в браузере.", "ok"); });
   exportBtn.addEventListener("click", exportCompsJson);
   loadPublishedBtn.addEventListener("click", loadPublishedComps);
+  clearDraftBtn.addEventListener("click", clearDraft);
   searchInput.addEventListener("input", window.Shared.debounce((event) => {
     state.search = event.target.value.trim();
     renderPool();

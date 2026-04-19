@@ -40,9 +40,11 @@
         </div>
         <div class="admin-actions">
           <button id="admin-refresh" class="download-button" type="button">Обновить из источников</button>
+          <button id="admin-add-manual" class="secondary-button" type="button">+ Добавить вручную</button>
           <button id="admin-save-local" class="secondary-button" type="button">Сохранить черновик</button>
           <button id="admin-export" class="secondary-button" type="button">Скачать comps.json</button>
           <button id="admin-load-published" class="secondary-button" type="button">Загрузить опубликованный</button>
+          <button id="admin-clear-draft" class="secondary-button admin-clear-draft" type="button">Сбросить черновик</button>
         </div>
       </section>
 
@@ -50,6 +52,11 @@
         <div id="admin-status">Готов к работе.</div>
         <div id="admin-source-status" class="filter-caption"></div>
       </section>
+
+      <details id="admin-diagnostics" class="admin-diagnostics" hidden>
+        <summary>Диагностика источников</summary>
+        <div id="admin-diagnostics-body"></div>
+      </details>
 
       <section class="admin-layout">
         <aside class="admin-pool">

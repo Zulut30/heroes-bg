@@ -1,11 +1,31 @@
 const { rateLimit } = require("./_blizzard");
 
 const FIRESTONE_PAGE = "https://www.firestoneapp.com/battlegrounds/comps?rank=25";
+// Firestone's React app fetches comp data from S3-backed JSON files. Their
+// production layout has shifted a few times; we try the most-recent shapes
+// in order and use whichever one returns valid data first.
 const FIRESTONE_DATA_CANDIDATES = [
+  // Modern (per-rank, per-time-window): /api/bgs/meta-comps/{period}/{mmr}/...
+  "https://static.zerotoheroes.com/api/bgs/meta-comps/past-3/25/comps.gz.json",
+  "https://static.zerotoheroes.com/api/bgs/meta-comps/past-3/all/comps.gz.json",
+  "https://static.zerotoheroes.com/api/bgs/meta-comps/past-7/25/comps.gz.json",
+  "https://static.zerotoheroes.com/api/bgs/meta-comps/past-7/all/comps.gz.json",
+  "https://static.zerotoheroes.com/api/bgs/meta-comps/last-patch/25/comps.gz.json",
+  "https://static.zerotoheroes.com/api/bgs/meta-comps/last-patch/all/comps.gz.json",
+  // Older locations
+  "https://static.zerotoheroes.com/api/bgs/meta-comps/25/comps.gz.json",
+  "https://static.zerotoheroes.com/api/bgs/meta-comps/all/comps.gz.json",
+  "https://static.zerotoheroes.com/api/bgs/meta-comps/comps.gz.json",
+  "https://static.zerotoheroes.com/api/bgs/meta-comps.gz.json",
   "https://static.zerotoheroes.com/api/bgs/meta-comps/mmr-25/comps.gz.json",
   "https://static.zerotoheroes.com/api/bgs/meta-comps.json"
 ];
 const HSREPLAY_PAGE = "https://hsreplay.net/battlegrounds/comps/";
+// HSReplay also caches their BG comp data as a JSON snapshot.
+const HSREPLAY_DATA_CANDIDATES = [
+  "https://hsreplay.net/analytics/bgs_comps/",
+  "https://hsreplay.net/analytics/query/list_battlegrounds_comps/"
+];
 
 const TIERS = ["S", "A", "B", "C", "D"];
 const VALID_RACES = new Set([
@@ -148,8 +168,10 @@ async function fetchText(url, accept = "text/html,application/json;q=0.9") {
   try {
     const response = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; BattlegroundsHub/1.0; +https://github.com/Zulut30/heroes-bg)",
-        Accept: accept
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0 Safari/537.36",
+        Accept: accept,
+        "Accept-Language": "ru-RU,ru;q=0.9,en;q=0.8",
+        "Accept-Encoding": "gzip, deflate, br"
       }
     });
     if (!response.ok) {
@@ -165,6 +187,7 @@ async function fetchText(url, accept = "text/html,application/json;q=0.9") {
 
 async function loadFirestone() {
   const errors = [];
+  let usedSource = null;
   for (const url of FIRESTONE_DATA_CANDIDATES) {
     const result = await fetchText(url, "application/json");
     if (!result.ok) {
@@ -172,41 +195,64 @@ async function loadFirestone() {
       continue;
     }
     const parsed = tryParseJson(result.body);
-    if (!parsed) continue;
-    const list = deepFindCompList(parsed) || parsed.comps || [];
-    if (list.length) {
-      return { comps: list.map(normalizeFirestoneComp).filter(Boolean), errors };
+    if (!parsed) {
+      errors.push(`${url}: not JSON (${result.body.slice(0, 80)})`);
+      continue;
     }
+    const list = deepFindCompList(parsed);
+    if (list.length) {
+      usedSource = url;
+      return { comps: list.map(normalizeFirestoneComp).filter(Boolean), errors, usedSource };
+    }
+    errors.push(`${url}: parsed JSON but no comps array found (top-level keys: ${Object.keys(parsed).slice(0, 6).join(",")})`);
   }
-  // Fallback to scraping the page HTML for embedded data
   const page = await fetchText(FIRESTONE_PAGE);
   if (page.ok) {
     for (const blob of extractEmbeddedJson(page.body)) {
       const list = deepFindCompList(blob);
       if (list.length) {
-        return { comps: list.map(normalizeFirestoneComp).filter(Boolean), errors };
+        usedSource = `${FIRESTONE_PAGE} (embedded)`;
+        return { comps: list.map(normalizeFirestoneComp).filter(Boolean), errors, usedSource };
       }
     }
+    errors.push(`${FIRESTONE_PAGE}: HTML received but no embedded comp list (${page.body.length} bytes)`);
   } else {
     errors.push(`${FIRESTONE_PAGE}: ${page.error || page.status}`);
   }
-  return { comps: [], errors };
+  return { comps: [], errors, usedSource };
 }
 
 async function loadHsreplay() {
   const errors = [];
+  let usedSource = null;
+  for (const url of HSREPLAY_DATA_CANDIDATES) {
+    const result = await fetchText(url, "application/json");
+    if (!result.ok) {
+      errors.push(`${url}: ${result.error || result.status}`);
+      continue;
+    }
+    const parsed = tryParseJson(result.body);
+    if (!parsed) continue;
+    const list = deepFindCompList(parsed);
+    if (list.length) {
+      usedSource = url;
+      return { comps: list.map(normalizeHsreplayComp).filter(Boolean), errors, usedSource };
+    }
+  }
   const page = await fetchText(HSREPLAY_PAGE);
   if (!page.ok) {
     errors.push(`${HSREPLAY_PAGE}: ${page.error || page.status}`);
-    return { comps: [], errors };
+    return { comps: [], errors, usedSource };
   }
   for (const blob of extractEmbeddedJson(page.body)) {
     const list = deepFindCompList(blob);
     if (list.length) {
-      return { comps: list.map(normalizeHsreplayComp).filter(Boolean), errors };
+      usedSource = `${HSREPLAY_PAGE} (embedded)`;
+      return { comps: list.map(normalizeHsreplayComp).filter(Boolean), errors, usedSource };
     }
   }
-  return { comps: [], errors };
+  errors.push(`${HSREPLAY_PAGE}: HTML received (${page.body.length} bytes) but no embedded comp list found`);
+  return { comps: [], errors, usedSource };
 }
 
 async function loadAll(force = false) {
@@ -218,8 +264,8 @@ async function loadAll(force = false) {
     const payload = {
       fetchedAt: new Date().toISOString(),
       sources: {
-        firestone: { count: firestone.comps.length, errors: firestone.errors },
-        hsreplay: { count: hsreplay.comps.length, errors: hsreplay.errors }
+        firestone: { count: firestone.comps.length, usedSource: firestone.usedSource, errors: firestone.errors.slice(0, 6) },
+        hsreplay: { count: hsreplay.comps.length, usedSource: hsreplay.usedSource, errors: hsreplay.errors.slice(0, 6) }
       },
       comps: [...firestone.comps, ...hsreplay.comps]
     };
