@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Админ-панель стратегий — Конструктор БГ</title>
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#dbc07a">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body class="admin-page">
+  <div class="page-shell page-shell-wide">
+    <header class="site-header">
+      <a class="brand-mark" href="./index.html">Battlegrounds Hub</a>
+      <nav class="site-nav" aria-label="Основная навигация">
+        <a class="nav-link" href="./index.html">Главная</a>
+        <a class="nav-link" href="./hero-tier-builder.html">Конструктор тир-листов</a>
+        <a class="nav-link" href="./library.html">Библиотека карт</a>
+        <a class="nav-link" href="./blizzard-spells.html">Заклинания</a>
+        <a class="nav-link" href="./accessories.html">Аксессуары</a>
+        <a class="nav-link" href="./strategy-builder.html">Конструктор стратегий</a>
+        <a class="nav-link" href="./strategies.html">Стратегии</a>
+        <a class="nav-link is-active" href="./admin.html">Админ</a>
+      </nav>
+    </header>
+
+    <main class="admin-main">
+      <section class="admin-hero">
+        <div>
+          <p class="eyebrow">Admin</p>
+          <h1 class="panel-title">Сборка публичного тир-листа стратегий</h1>
+          <p class="hero-copy admin-hero-copy">
+            Тяни стратегии из источников (Firestone и HSReplay) в нужный тир, переименовывай и редактируй прямо в карточке.
+            Когда лист готов — нажми «Скачать <code>comps.json</code>» и положи файл в корень репозитория. Локальный черновик
+            сохраняется в браузере между сессиями.
+          </p>
+        </div>
+        <div class="admin-actions">
+          <button id="admin-refresh" class="download-button" type="button">Обновить из источников</button>
+          <button id="admin-save-local" class="secondary-button" type="button">Сохранить черновик</button>
+          <button id="admin-export" class="secondary-button" type="button">Скачать comps.json</button>
+          <button id="admin-load-published" class="secondary-button" type="button">Загрузить опубликованный</button>
+        </div>
+      </section>
+
+      <section class="admin-status-bar" aria-live="polite">
+        <div id="admin-status">Готов к работе.</div>
+        <div id="admin-source-status" class="filter-caption"></div>
+      </section>
+
+      <section class="admin-layout">
+        <aside class="admin-pool">
+          <div class="admin-pool-head">
+            <h2 class="panel-title">Кандидаты</h2>
+            <div class="admin-pool-controls">
+              <input id="admin-search" class="text-input" type="search" placeholder="Поиск: Beast, Quilboar, Bounty…">
+              <div id="admin-source-filters" class="chip-row" aria-label="Фильтр по источнику"></div>
+            </div>
+          </div>
+          <div id="admin-pool-list" class="admin-pool-list" aria-live="polite"></div>
+        </aside>
+
+        <section class="admin-board">
+          <div id="admin-tiers" class="admin-tiers"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script src="./shared.js"></script>
+  <script src="./admin.js"></script>
+</body>
+</html>
