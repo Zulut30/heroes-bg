@@ -127,21 +127,44 @@ function tryParseJson(text) {
 
 function extractEmbeddedJson(html) {
   const out = [];
-  const nextMatch = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
-  if (nextMatch) {
-    const parsed = tryParseJson(nextMatch[1]);
+  const namedScript = (id) => {
+    const re = new RegExp(`<script[^>]*id=["']${id}["'][^>]*>([\\s\\S]*?)<\\/script>`, "i");
+    const match = html.match(re);
+    if (!match) return;
+    const parsed = tryParseJson(match[1]);
+    if (parsed) out.push(parsed);
+  };
+  const windowAssign = (varName) => {
+    const re = new RegExp(`window\\.${varName}\\s*=\\s*(\\{[\\s\\S]*?\\});`);
+    const match = html.match(re);
+    if (!match) return;
+    const parsed = tryParseJson(match[1]);
+    if (parsed) out.push(parsed);
+  };
+
+  namedScript("__NEXT_DATA__");
+  namedScript("__NUXT_DATA__");
+  windowAssign("__INITIAL_DATA__");
+  windowAssign("__INITIAL_STATE__");
+  windowAssign("__NUXT__");
+  windowAssign("__APOLLO_STATE__");
+
+  // Apollo: window.__APOLLO_STATE__ = {...} or const __APOLLO_STATE__ = ...
+  const apolloAlt = html.match(/__APOLLO_STATE__\s*=\s*(\{[\s\S]*?\})\s*;?\s*<\/script>/);
+  if (apolloAlt) {
+    const parsed = tryParseJson(apolloAlt[1]);
     if (parsed) out.push(parsed);
   }
-  const reduxMatch = html.match(/window\.__INITIAL_DATA__\s*=\s*(\{[\s\S]*?\});/);
-  if (reduxMatch) {
-    const parsed = tryParseJson(reduxMatch[1]);
+
+  // Generic: any <script type="application/json"> blob big enough to host comps
+  const jsonScriptRe = /<script[^>]*type=["']application\/json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let m;
+  while ((m = jsonScriptRe.exec(html))) {
+    if (m[1].length < 200) continue; // skip tiny meta blobs
+    const parsed = tryParseJson(m[1]);
     if (parsed) out.push(parsed);
   }
-  const nuxtMatch = html.match(/window\.__NUXT__\s*=\s*(\{[\s\S]*?\});/);
-  if (nuxtMatch) {
-    const parsed = tryParseJson(nuxtMatch[1]);
-    if (parsed) out.push(parsed);
-  }
+
   return out;
 }
 

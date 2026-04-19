@@ -13,6 +13,11 @@
   const sourceStatusEl = document.getElementById("admin-source-status");
   const diagnosticsEl = document.getElementById("admin-diagnostics");
   const diagnosticsBodyEl = document.getElementById("admin-diagnostics-body");
+  const importUrlInput = document.getElementById("admin-import-url");
+  const importUrlBtn = document.getElementById("admin-import-url-btn");
+  const importJsonInput = document.getElementById("admin-import-json");
+  const importJsonBtn = document.getElementById("admin-import-json-btn");
+  const importResultEl = document.getElementById("admin-import-result");
 
   const TIER_ORDER = ["S", "A", "B", "C", "D"];
   const POOL_KEY = "POOL";
@@ -539,12 +544,119 @@
     }
   }
 
+  function deepFindCompList(obj, depth = 0) {
+    if (!obj || typeof obj !== "object" || depth > 10) return [];
+    if (Array.isArray(obj)) {
+      if (obj.length && typeof obj[0] === "object" && obj[0]
+          && (obj[0].coreCards || obj[0].coreMinions || obj[0].minions || obj[0].cards)
+          && (obj[0].name || obj[0].title)) {
+        return obj;
+      }
+      for (const item of obj) {
+        const found = deepFindCompList(item, depth + 1);
+        if (found.length) return found;
+      }
+      return [];
+    }
+    for (const key of Object.keys(obj)) {
+      const found = deepFindCompList(obj[key], depth + 1);
+      if (found.length) return found;
+    }
+    return [];
+  }
+
+  function tryParseAny(text) {
+    try { return JSON.parse(text); } catch { return null; }
+  }
+
+  function adoptComps(rawList, source) {
+    if (!Array.isArray(rawList) || !rawList.length) return 0;
+    const incoming = rawList.map((raw) => ({
+      sourceId: `${source}:${raw.name || raw.title || raw.englishName || makeUid()}`,
+      source,
+      tier: (raw.tier || "B").toUpperCase(),
+      race: (raw.tribe || raw.minionTribe || raw.race || "NONE").toUpperCase().replace(/^MINION_/, ""),
+      name: raw.name || raw.title || raw.englishName || "Без названия",
+      subtitle: raw.englishName || raw.shortName || raw.subtitle || "",
+      summary: raw.description || raw.flavor || "",
+      difficulty: raw.difficulty || "Medium",
+      trend: raw.trend || raw.delta ? (Number(raw.trend ?? raw.delta) > 0 ? "up" : Number(raw.trend ?? raw.delta) < 0 ? "down" : "stable") : "stable",
+      cards: (raw.coreCards || raw.coreMinions || raw.cards || raw.minions || []).slice(0, 8).map((card) => ({
+        id: String(card?.cardId || card?.id || card?.dbfId || ""),
+        name: card?.name || ""
+      })).filter((c) => c.id || c.name)
+    }));
+    return ingestFromSources({ comps: incoming });
+  }
+
+  async function importFromUrl() {
+    const url = importUrlInput.value.trim();
+    if (!url) {
+      importResultEl.textContent = "Вставь URL JSON-эндпоинта.";
+      return;
+    }
+    importResultEl.textContent = "Загружаю…";
+    importUrlBtn.disabled = true;
+    try {
+      const response = await fetch(`/api/comps-fetch?url=${encodeURIComponent(url)}`);
+      const payload = await response.json();
+      if (!payload.ok) {
+        importResultEl.textContent = `Ошибка: ${payload.status || ""} ${payload.error || ""}`;
+        return;
+      }
+      const json = tryParseAny(payload.body);
+      if (!json) {
+        importResultEl.textContent = `Получено ${payload.length} байт, но это не JSON.`;
+        return;
+      }
+      const list = deepFindCompList(json);
+      if (!list.length) {
+        importResultEl.textContent = `JSON получен (${payload.length} байт), но массив комп не найден.`;
+        return;
+      }
+      const added = adoptComps(list, "imported");
+      saveDraft();
+      render();
+      importResultEl.textContent = `Найдено ${list.length}, добавлено новых: ${added}.`;
+      setStatus(`Импортировано из URL: ${added} новых стратегий.`, "ok");
+    } catch (error) {
+      importResultEl.textContent = `Ошибка: ${error.message}`;
+    } finally {
+      importUrlBtn.disabled = false;
+    }
+  }
+
+  function importFromJsonText() {
+    const text = importJsonInput.value.trim();
+    if (!text) {
+      importResultEl.textContent = "Вставь JSON в текстовое поле.";
+      return;
+    }
+    const json = tryParseAny(text);
+    if (!json) {
+      importResultEl.textContent = "Не получилось распарсить JSON.";
+      return;
+    }
+    const list = Array.isArray(json) ? json : deepFindCompList(json);
+    if (!list.length) {
+      importResultEl.textContent = "В JSON нет массива комп.";
+      return;
+    }
+    const added = adoptComps(list, "imported");
+    saveDraft();
+    render();
+    importResultEl.textContent = `Найдено ${list.length}, добавлено новых: ${added}.`;
+    setStatus(`Импортировано из JSON: ${added} новых стратегий.`, "ok");
+  }
+
   refreshBtn.addEventListener("click", () => refreshFromSources(true));
   addManualBtn.addEventListener("click", addManualComp);
   saveLocalBtn.addEventListener("click", () => { saveDraft(); setStatus("Черновик сохранён в браузере.", "ok"); });
   exportBtn.addEventListener("click", exportCompsJson);
   loadPublishedBtn.addEventListener("click", loadPublishedComps);
   clearDraftBtn.addEventListener("click", clearDraft);
+  importUrlBtn.addEventListener("click", importFromUrl);
+  importJsonBtn.addEventListener("click", importFromJsonText);
   searchInput.addEventListener("input", window.Shared.debounce((event) => {
     state.search = event.target.value.trim();
     renderPool();

@@ -58,6 +58,27 @@
         <div id="admin-diagnostics-body"></div>
       </details>
 
+      <details class="admin-import">
+        <summary>Импорт из URL или JSON</summary>
+        <div class="admin-import-body">
+          <p class="admin-import-hint">
+            Если автоматический скрапер не нашёл данные, открой firestoneapp.com или hsreplay.net,
+            скопируй URL JSON-запроса из DevTools → Network (или сам JSON в буфер) и вставь сюда.
+            Разрешённые хосты: <code>firestoneapp.com</code>, <code>zerotoheroes.com</code>, <code>hsreplay.net</code>,
+            <code>hearthsim.net</code>.
+          </p>
+          <div class="admin-import-row">
+            <input id="admin-import-url" class="text-input" type="url" placeholder="https://static.zerotoheroes.com/api/bgs/... .json">
+            <button id="admin-import-url-btn" class="secondary-button" type="button">Загрузить URL</button>
+          </div>
+          <div class="admin-import-row">
+            <textarea id="admin-import-json" class="text-input admin-import-textarea" rows="6" placeholder='Или вставь JSON: { "comps": [...] } или массив [...]'></textarea>
+            <button id="admin-import-json-btn" class="secondary-button" type="button">Импортировать JSON</button>
+          </div>
+          <div id="admin-import-result" class="filter-caption"></div>
+        </div>
+      </details>
+
       <section class="admin-layout">
         <aside class="admin-pool">
           <div class="admin-pool-head">
