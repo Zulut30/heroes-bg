@@ -95,26 +95,38 @@
       tile.tabIndex = 0;
       const safeName = window.Shared.escapeHtml(card.name);
       const initials = safeName.replace(/[^A-Za-zА-Яа-я]/g, "").slice(0, 2) || "?";
-      tile.innerHTML = `
+      const primary = card.image ? encodeURI(card.image) : "";
+      const fallbackSrc = card.imageFallback ? encodeURI(card.imageFallback) : "";
+      tile.innerHTML = primary ? `
         <img
           class="card-art"
-          src="${encodeURI(card.image)}"
+          src="${primary}"
           alt="${safeName}"
           loading="lazy"
           decoding="async"
           fetchpriority="low"
         >
+      ` : `
+        <div class="card-art card-art-placeholder" role="img" aria-label="${safeName}">
+          <span>${initials}</span>
+        </div>
       `;
       const img = tile.querySelector("img");
       if (img) {
+        let triedFallback = false;
         img.addEventListener("error", () => {
+          if (!triedFallback && fallbackSrc && fallbackSrc !== primary) {
+            triedFallback = true;
+            img.src = fallbackSrc;
+            return;
+          }
           const placeholder = document.createElement("div");
           placeholder.className = "card-art card-art-placeholder";
           placeholder.setAttribute("role", "img");
           placeholder.setAttribute("aria-label", card.name || "");
           placeholder.innerHTML = `<span>${initials}</span>`;
           img.replaceWith(placeholder);
-        }, { once: true });
+        });
       }
       const index = state.filtered.indexOf(card);
       const activate = () => openLightbox(index);

@@ -25,28 +25,38 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const upstreamUrl = `https://art.hearthstonejson.com/v1/bgs/latest/${encodeURIComponent(locale)}/${encodeURIComponent(size)}/${encodeURIComponent(id)}.png`;
-  const cacheKey = upstreamUrl;
+  // Try several HearthstoneJSON paths — Battlegrounds card art lives under
+  // /bgs/latest, but trinket / anomaly art (and most cards from outside the
+  // BG-only feed) is hosted under /render/latest with the same id scheme.
+  // The 256x JPG art-only feed is the third fallback.
+  const candidates = [
+    `https://art.hearthstonejson.com/v1/bgs/latest/${encodeURIComponent(locale)}/${encodeURIComponent(size)}/${encodeURIComponent(id)}.png`,
+    `https://art.hearthstonejson.com/v1/render/latest/${encodeURIComponent(locale)}/${encodeURIComponent(size)}/${encodeURIComponent(id)}.png`,
+    `https://art.hearthstonejson.com/v1/render/latest/enUS/${encodeURIComponent(size)}/${encodeURIComponent(id)}.png`,
+    `https://art.hearthstonejson.com/v1/${encodeURIComponent(size)}/${encodeURIComponent(id)}.jpg`
+  ];
+  const cacheKey = `art:${id}:${size}:${locale}`;
+
+  const fetchUpstreamCascade = async () => {
+    for (const url of candidates) {
+      try {
+        const upstream = await fetch(url, {
+          headers: { "User-Agent": "Mozilla/5.0 Codex Battlegrounds Hub" }
+        });
+        if (upstream.ok) {
+          const contentType = upstream.headers.get("content-type") || "image/png";
+          const buffer = Buffer.from(await upstream.arrayBuffer());
+          return { ok: true, contentType, buffer, url };
+        }
+      } catch (_) { /* try next */ }
+    }
+    return { ok: false, status: 404 };
+  };
 
   try {
     let upstreamPromise = inFlight.get(cacheKey);
     if (!upstreamPromise) {
-      upstreamPromise = fetch(upstreamUrl, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 Codex Battlegrounds Hub"
-        }
-      }).then(async (upstream) => {
-        if (!upstream.ok) {
-          return { ok: false, status: upstream.status };
-        }
-        const contentType = upstream.headers.get("content-type") || "image/png";
-        const buffer = Buffer.from(await upstream.arrayBuffer());
-        return { ok: true, contentType, buffer };
-      }).finally(() => {
-        // Hold in-flight only for the duration of the network call so memory
-        // stays bounded; the CDN/browser cache handles the rest.
-        inFlight.delete(cacheKey);
-      });
+      upstreamPromise = fetchUpstreamCascade().finally(() => inFlight.delete(cacheKey));
       inFlight.set(cacheKey, upstreamPromise);
     }
 

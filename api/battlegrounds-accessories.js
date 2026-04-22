@@ -102,9 +102,39 @@ function isTrinketCard(card) {
   return false;
 }
 
+function pickImageUrl(card) {
+  // Try every plausible field name a Hearthstone card payload has shipped
+  // with over the last few schema revisions, including consumer-page shapes.
+  const candidates = [
+    card.image,
+    card.imageUrl,
+    card.image_url,
+    card.imageRender,
+    card.image_render,
+    card.cropImage,
+    card.crop_image,
+    card.cropUrl,
+    card.battlegrounds?.image,
+    card.battlegrounds?.imageGold,
+    card.imageGold,
+    card.image_gold,
+    card.assets?.image,
+    card.assets?.png,
+    card.assets?.jpg,
+    card.images?.normal,
+    card.images?.golden,
+    card.media?.image,
+    card.media?.png,
+    card.imageOriginal
+  ];
+  return candidates.find((u) => typeof u === "string" && u.trim()) || "";
+}
+
 function normalizeCard(card, locale, sourceTag) {
   const id = String(card.id ?? card.cardId ?? card.dbfId ?? card.slug ?? "");
-  const upstreamImage = card.image || card.battlegrounds?.image || card.cropImage || card.imageUrl || "";
+  const upstreamImage = pickImageUrl(card);
+  const proxiedImage = upstreamImage ? buildRemoteImageProxyUrl(upstreamImage) : "";
+  const fallbackImage = buildArtProxyUrl(id, locale);
   return {
     id: `${sourceTag.slice(0,2)}-${id}`,
     cardId: id,
@@ -113,7 +143,9 @@ function normalizeCard(card, locale, sourceTag) {
     name: card.name || card.title || "",
     text: stripHtml(card.text || card.flavorText || ""),
     size: detectSize(card),
-    image: upstreamImage ? buildRemoteImageProxyUrl(upstreamImage) : buildArtProxyUrl(id, locale),
+    image: proxiedImage || fallbackImage,
+    imageFallback: proxiedImage ? fallbackImage : "",
+    upstreamImage,
     cost: card.manaCost ?? card.cost ?? null,
     rarity: card.rarity || null,
     set: card.cardSet?.slug || card.set?.slug || card.cardSetId || null
@@ -421,14 +453,18 @@ module.exports = async function handler(req, res) {
       res.statusCode = 200;
       res.setHeader("Content-Type", "application/json; charset=utf-8");
       res.setHeader("Cache-Control", "no-store");
+      const sample = payload.accessories.slice(0, 5);
+      const withImage = payload.accessories.filter((c) => c.upstreamImage).length;
+      const withoutImage = payload.total - withImage;
       res.end(JSON.stringify({
         debug: true,
         locale,
         total: payload.total,
         small: payload.small.length,
         large: payload.large.length,
+        imageStats: { withUpstream: withImage, fallbackOnly: withoutImage },
         sources: payload.sources,
-        sample: payload.accessories.slice(0, 3)
+        sample
       }, null, 2));
       return;
     }
