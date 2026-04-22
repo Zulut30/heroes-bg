@@ -1,68 +1,33 @@
-const { rateLimit } = require("./_blizzard");
+const { fetchBlizzardJson, normalizeLocale, rateLimit } = require("./_blizzard");
 
-// HearthstoneJSON publishes the entire card pool as a static JSON file per
-// locale. It's the friendliest source for Battlegrounds trinkets:
-//   * No auth, no CORS, no rate-limit on their CDN.
-//   * The shape is stable and well-known (HearthstoneJSON has been running
-//     for years and is what Firestone / HSReplay use under the hood).
-//   * Card IDs map 1:1 to the art served by /api/card-art (which is also a
-//     HearthstoneJSON proxy), so images come from the same place we already
-//     trust.
+// Source 1 — Blizzard official Hearthstone API. Always reflects the latest
+// patch but requires our OAuth credentials to be configured (handled by the
+// shared _blizzard helper).
+//
+// Source 2 — HearthstoneJSON. No auth, ships ~weekly snapshots, used as a
+// fallback when Blizzard credentials are missing or rate-limited.
+//
+// We try Blizzard first, then HearthstoneJSON, then merge by stable id so
+// the page never undercounts when one source lags behind.
 
-// Battlegrounds trinkets are NOT marked collectible in Hearthstone, so the
-// cards.collectible.json feed simply doesn't contain them. We have to use
-// the full cards.json. Keep the collectible feed as a backup just in case
-// the layout flips back.
-const HSJSON_URL = (locale) =>
+const HSJSON_ALL_URL = (locale) =>
   `https://api.hearthstonejson.com/v1/latest/${encodeURIComponent(locale)}/cards.json`;
 const HSJSON_FALLBACK_URLS = (locale) => [
   `https://api.hearthstonejson.com/v1/latest/${encodeURIComponent(locale)}/cards.collectible.json`
 ];
 
-const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const CACHE_TTL_MS = 60 * 60 * 1000;
 const cache = { payload: null, expiresAt: 0, locale: null };
 let inFlight = null;
 
-function isTrinket(card) {
-  if (!card) return false;
-  const type = String(card.type || "").toUpperCase();
-  if (type === "BATTLEGROUND_TRINKET") return true;
-  if (type === "BG_TRINKET") return true;
-  if (type.endsWith("_TRINKET")) return true;
-  const mechanics = (card.mechanics || []).map((m) => String(m).toUpperCase());
-  if (mechanics.some((m) => m.includes("TRINKET"))) return true;
-  const setStr = String(card.set || "").toUpperCase();
-  if (setStr.includes("TRINKET")) return true;
-  // Some HearthstoneJSON dumps tag trinkets via referencedTags / classes
-  const refs = (card.referencedTags || []).map((m) => String(m).toUpperCase());
-  if (refs.some((m) => m.includes("TRINKET"))) return true;
-  // Or via the cardClass / classes field carrying BATTLEGROUND_TRINKET_*
-  const classes = [...(card.classes || []), card.cardClass].filter(Boolean).map((m) => String(m).toUpperCase());
-  if (classes.some((m) => m.includes("TRINKET"))) return true;
-  return false;
+function buildRemoteImageProxyUrl(imageUrl) {
+  const normalized = String(imageUrl || "").trim();
+  return normalized ? `/api/remote-image?src=${encodeURIComponent(normalized)}` : "";
 }
 
-function detectSize(card) {
-  const mechanics = (card.mechanics || []).map((m) => String(m).toUpperCase());
-  if (mechanics.includes("BATTLEGROUND_TRINKET_LARGE")) return "LARGE";
-  if (mechanics.includes("BATTLEGROUND_TRINKET_SMALL")) return "SMALL";
-  if (mechanics.includes("BG_TRINKET_LARGE")) return "LARGE";
-  if (mechanics.includes("BG_TRINKET_SMALL")) return "SMALL";
-  // Hearthstone trinkets cost 1 anima for "lesser" and 2 anima for "greater".
-  // This is the most reliable structural signal in the JSON.
-  if (typeof card.cost === "number") {
-    if (card.cost === 1) return "SMALL";
-    if (card.cost >= 2) return "LARGE";
-  }
-  if (typeof card.manaCost === "number") {
-    if (card.manaCost === 1) return "SMALL";
-    if (card.manaCost >= 2) return "LARGE";
-  }
-  // Names occasionally hint
-  const nameLower = String(card.name || "").toLowerCase();
-  if (nameLower.includes("lesser") || nameLower.includes("малый")) return "SMALL";
-  if (nameLower.includes("greater") || nameLower.includes("большой")) return "LARGE";
-  return "SMALL";
+function buildArtProxyUrl(id, locale) {
+  if (!id) return "";
+  return `/api/card-art?id=${encodeURIComponent(id)}&locale=${encodeURIComponent(locale)}&size=512x`;
 }
 
 function stripHtml(value) {
@@ -74,33 +39,175 @@ function stripHtml(value) {
     .trim();
 }
 
-function normalizeTrinket(card, locale) {
-  const id = card.id || card.dbfId;
+function detectSize(card) {
+  const mechanics = (card.mechanics || []).map((m) => String(m && (m.name || m)).toUpperCase());
+  if (mechanics.some((m) => m.includes("BATTLEGROUND_TRINKET_LARGE"))) return "LARGE";
+  if (mechanics.some((m) => m.includes("BATTLEGROUND_TRINKET_SMALL"))) return "SMALL";
+  if (mechanics.some((m) => m.includes("BG_TRINKET_LARGE"))) return "LARGE";
+  if (mechanics.some((m) => m.includes("BG_TRINKET_SMALL"))) return "SMALL";
+
+  const refs = (card.referencedTags || []).map((m) => String(m).toUpperCase());
+  if (refs.some((m) => m.includes("LARGE"))) return "LARGE";
+  if (refs.some((m) => m.includes("SMALL"))) return "SMALL";
+
+  // Hearthstone trinkets cost 1 anima for "lesser" and 2 for "greater".
+  const cost = typeof card.cost === "number" ? card.cost : (typeof card.manaCost === "number" ? card.manaCost : null);
+  if (cost === 1) return "SMALL";
+  if (cost && cost >= 2) return "LARGE";
+
+  // Last-ditch name heuristic
+  const nameLower = String(card.name || "").toLowerCase();
+  if (nameLower.includes("greater") || nameLower.includes("большой")) return "LARGE";
+  if (nameLower.includes("lesser") || nameLower.includes("малый")) return "SMALL";
+  return "SMALL";
+}
+
+// ---------- HearthstoneJSON parsing ----------
+
+function isTrinketHsjson(card) {
+  if (!card) return false;
+  const type = String(card.type || "").toUpperCase();
+  if (type === "BATTLEGROUND_TRINKET") return true;
+  if (type === "BG_TRINKET") return true;
+  if (type.endsWith("_TRINKET")) return true;
+  const mechanics = (card.mechanics || []).map((m) => String(m).toUpperCase());
+  if (mechanics.some((m) => m.includes("TRINKET"))) return true;
+  const setStr = String(card.set || "").toUpperCase();
+  if (setStr.includes("TRINKET")) return true;
+  const refs = (card.referencedTags || []).map((m) => String(m).toUpperCase());
+  if (refs.some((m) => m.includes("TRINKET"))) return true;
+  return false;
+}
+
+function normalizeHsjsonCard(card, locale) {
+  const id = String(card.id || card.dbfId || "");
   return {
-    id: `bg-${id}`,
+    id: `hs-${id}`,
     cardId: id,
+    dedupeKey: `${id}|${(card.name || "").toLowerCase()}`,
+    source: "HearthstoneJSON",
     name: card.name || "",
     text: stripHtml(card.text || ""),
     size: detectSize(card),
-    image: `/api/card-art?id=${encodeURIComponent(id)}&locale=${encodeURIComponent(locale)}&size=512x`,
+    image: buildArtProxyUrl(id, locale),
     cost: card.cost ?? card.manaCost ?? null,
     rarity: card.rarity || null,
-    set: card.set || null,
-    raw: undefined
+    set: card.set || null
   };
 }
 
-async function fetchJson(url) {
+// ---------- Blizzard parsing ----------
+
+function isTrinketBlizzard(card) {
+  if (!card) return false;
+  if (card.battlegrounds && card.battlegrounds.trinket) return true;
+  const slug = String(card.cardType?.slug || card.type?.slug || card.typeSlug || "").toLowerCase();
+  if (slug.includes("trinket")) return true;
+  // cardTypeId observed for trinkets has been 43 / 44 / 47 depending on
+  // schema revisions — accept anything tagged as such even if the upstream
+  // changes the number.
+  if ([43, 44, 45, 47].includes(Number(card.cardTypeId))) return true;
+  // Mechanics tag — Blizzard sometimes also returns the same mechanic codes.
+  const mechanics = (card.mechanics || []).map((m) => String(m && (m.slug || m.name || m)).toUpperCase());
+  if (mechanics.some((m) => m.includes("TRINKET"))) return true;
+  return false;
+}
+
+function normalizeBlizzardCard(card, locale) {
+  const id = String(card.id ?? card.cardId ?? card.dbfId ?? "");
+  const upstreamImage = card.image || card.battlegrounds?.image || card.cropImage || "";
+  return {
+    id: `bz-${id}`,
+    cardId: id,
+    dedupeKey: `${id}|${(card.name || "").toLowerCase()}`,
+    source: "Blizzard",
+    name: card.name || "",
+    text: stripHtml(card.text || ""),
+    size: detectSize({
+      ...card,
+      mechanics: (card.mechanics || []).map((m) => (m && (m.slug || m.name || m)) || m)
+    }),
+    image: upstreamImage ? buildRemoteImageProxyUrl(upstreamImage) : buildArtProxyUrl(id, locale),
+    cost: card.manaCost ?? card.cost ?? null,
+    rarity: card.rarity || null,
+    set: card.cardSet?.slug || card.set?.slug || card.cardSetId || null
+  };
+}
+
+// ---------- Loaders ----------
+
+async function fetchHsjson(url) {
   const response = await fetch(url, {
     headers: {
       "User-Agent": "Mozilla/5.0 (compatible; BattlegroundsHub/1.0; +https://github.com/Zulut30/heroes-bg)",
       Accept: "application/json"
     }
   });
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status} for ${url}`);
-  }
+  if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
   return response.json();
+}
+
+async function loadFromHsjson(locale) {
+  const errors = [];
+  const urls = [HSJSON_ALL_URL(locale), ...HSJSON_FALLBACK_URLS(locale)];
+  for (const url of urls) {
+    try {
+      const data = await fetchHsjson(url);
+      if (!Array.isArray(data) || !data.length) continue;
+      const trinkets = data.filter(isTrinketHsjson).map((c) => normalizeHsjsonCard(c, locale));
+      return { trinkets, source: url, totalScanned: data.length, errors };
+    } catch (error) {
+      errors.push(`${url}: ${error.message}`);
+    }
+  }
+  return { trinkets: [], source: null, totalScanned: 0, errors };
+}
+
+async function loadFromBlizzard(locale) {
+  // _blizzard helper expects ru_RU style locale
+  const blizzardLocale = locale.includes("_") ? locale : (locale.match(/^([a-z]{2})([A-Z]{2})$/) ? `${locale.slice(0,2)}_${locale.slice(2)}` : locale);
+  const errors = [];
+  const cards = [];
+  try {
+    let page = 1;
+    let pageCount = 1;
+    while (page <= pageCount && page <= 8) {
+      const response = await fetchBlizzardJson("/cards", {
+        locale: blizzardLocale,
+        gameMode: "battlegrounds",
+        pageSize: 500,
+        page
+      });
+      const pageCards = response.cards || [];
+      cards.push(...pageCards);
+      pageCount = Number(response.pageCount) || 1;
+      page += 1;
+    }
+  } catch (error) {
+    errors.push(`Blizzard: ${error.message}`);
+    return { trinkets: [], totalScanned: 0, errors };
+  }
+  const trinkets = cards.filter(isTrinketBlizzard).map((c) => normalizeBlizzardCard(c, locale));
+  return { trinkets, totalScanned: cards.length, errors };
+}
+
+function mergeTrinkets(...lists) {
+  const seen = new Map();
+  const out = [];
+  for (const list of lists) {
+    for (const trinket of list) {
+      const key = trinket.dedupeKey || `${trinket.cardId || trinket.id}|${trinket.name.toLowerCase()}`;
+      if (seen.has(key)) {
+        // Prefer the first source (Blizzard) but copy useful image fallbacks
+        const existing = seen.get(key);
+        if (!existing.image && trinket.image) existing.image = trinket.image;
+        continue;
+      }
+      seen.set(key, trinket);
+      out.push(trinket);
+    }
+  }
+  return out;
 }
 
 async function loadAccessories(locale, force = false) {
@@ -112,56 +219,27 @@ async function loadAccessories(locale, force = false) {
     return inFlight.promise;
   }
   const promise = (async () => {
-    let cards = null;
-    let usedUrl = null;
-    let lastError = null;
-    const urls = [HSJSON_URL(locale), ...HSJSON_FALLBACK_URLS(locale)];
-    for (const url of urls) {
-      try {
-        const data = await fetchJson(url);
-        if (Array.isArray(data) && data.length) {
-          cards = data;
-          usedUrl = url;
-          break;
-        }
-      } catch (error) {
-        lastError = error;
-      }
-    }
-    if (!cards) {
-      throw lastError || new Error("HearthstoneJSON empty");
-    }
-    const trinkets = cards.filter(isTrinket).map((card) => normalizeTrinket(card, locale));
-    trinkets.sort((a, b) => {
+    const [blizzard, hsjson] = await Promise.all([
+      loadFromBlizzard(locale).catch((error) => ({ trinkets: [], totalScanned: 0, errors: [`Blizzard: ${error.message}`] })),
+      loadFromHsjson(locale).catch((error) => ({ trinkets: [], source: null, totalScanned: 0, errors: [`HSJSON: ${error.message}`] }))
+    ]);
+    const merged = mergeTrinkets(blizzard.trinkets, hsjson.trinkets);
+    merged.sort((a, b) => {
       if (a.size !== b.size) return a.size === "SMALL" ? -1 : 1;
       return String(a.name).localeCompare(String(b.name), locale.replace("_", "-"));
     });
-    // Diagnostic histogram: helps figure out the right filter when the type
-    // field changes again. Only computed if we found nothing.
-    let typeHistogram = null;
-    let bgSetHistogram = null;
-    if (!trinkets.length) {
-      typeHistogram = {};
-      bgSetHistogram = {};
-      for (const c of cards) {
-        const t = String(c.type || "").toUpperCase();
-        typeHistogram[t] = (typeHistogram[t] || 0) + 1;
-        if (String(c.set || "").toUpperCase().includes("BG") || t.includes("BATTLEGROUND")) {
-          const setKey = String(c.set || "?");
-          bgSetHistogram[setKey] = (bgSetHistogram[setKey] || 0) + 1;
-        }
-      }
-    }
     const payload = {
-      source: "HearthstoneJSON",
-      sourceUrl: usedUrl,
+      source: blizzard.trinkets.length ? "Blizzard + HearthstoneJSON" : "HearthstoneJSON",
       locale,
-      total: trinkets.length,
-      small: trinkets.filter((t) => t.size === "SMALL"),
-      large: trinkets.filter((t) => t.size === "LARGE"),
-      accessories: trinkets,
+      total: merged.length,
+      small: merged.filter((t) => t.size === "SMALL"),
+      large: merged.filter((t) => t.size === "LARGE"),
+      accessories: merged,
       fetchedAt: new Date().toISOString(),
-      diagnostics: trinkets.length ? null : { totalCards: cards.length, typeHistogram, bgSetHistogram }
+      sources: {
+        blizzard: { count: blizzard.trinkets.length, scanned: blizzard.totalScanned, errors: blizzard.errors || [] },
+        hsjson: { count: hsjson.trinkets.length, scanned: hsjson.totalScanned, source: hsjson.source, errors: hsjson.errors || [] }
+      }
     };
     cache.payload = payload;
     cache.expiresAt = now + CACHE_TTL_MS;
@@ -195,12 +273,11 @@ module.exports = async function handler(req, res) {
       res.end(JSON.stringify({
         debug: true,
         locale,
-        sourceUrl: payload.sourceUrl,
         total: payload.total,
         small: payload.small.length,
         large: payload.large.length,
-        sample: payload.accessories.slice(0, 3),
-        diagnostics: payload.diagnostics
+        sources: payload.sources,
+        sample: payload.accessories.slice(0, 3)
       }, null, 2));
       return;
     }
@@ -210,7 +287,7 @@ module.exports = async function handler(req, res) {
     res.setHeader("Cache-Control", "public, s-maxage=3600, stale-while-revalidate=86400");
     res.setHeader("Vary", "Accept-Encoding");
     const body = JSON.stringify(payload);
-    const etag = `W/"hsjson-${payload.total}-${payload.locale}"`;
+    const etag = `W/"acc-${payload.total}-${locale}"`;
     res.setHeader("ETag", etag);
     if (ifNoneMatch && ifNoneMatch === etag) {
       res.statusCode = 304;
@@ -222,7 +299,7 @@ module.exports = async function handler(req, res) {
     res.statusCode = 502;
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     res.end(JSON.stringify({
-      error: "Не удалось загрузить аксессуары из HearthstoneJSON.",
+      error: "Не удалось загрузить аксессуары.",
       details: error.message
     }));
   }
