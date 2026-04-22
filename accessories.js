@@ -23,6 +23,17 @@
     lightboxIndex: -1
   };
 
+  // Pass through anything that already looks like a full URL or one of our
+  // proxied paths; only encodeURI raw local Cyrillic file paths. Calling
+  // encodeURI on a URL with %XX escapes turns "%3A" into "%253A" and the
+  // proxy returns 400 Bad Request.
+  function safeImageUrl(value) {
+    if (!value) return "";
+    const s = String(value);
+    if (s.startsWith("/api/") || /^https?:/i.test(s) || s.includes("%")) return s;
+    return encodeURI(s);
+  }
+
   function normalize(value) {
     return String(value || "").toLowerCase().trim();
   }
@@ -52,7 +63,7 @@
     state.lightboxIndex = index;
     lightbox.hidden = false;
     document.body.style.overflow = "hidden";
-    lightboxImage.src = encodeURI(card.image);
+    lightboxImage.src = safeImageUrl(card.image);
     lightboxImage.alt = card.name;
     lightboxTitle.textContent = card.name;
     lightboxMeta.textContent = getSizeLabel(card.size);
@@ -95,8 +106,8 @@
       tile.tabIndex = 0;
       const safeName = window.Shared.escapeHtml(card.name);
       const initials = safeName.replace(/[^A-Za-zА-Яа-я]/g, "").slice(0, 2) || "?";
-      const primary = card.image ? encodeURI(card.image) : "";
-      const fallbackSrc = card.imageFallback ? encodeURI(card.imageFallback) : "";
+      const primary = safeImageUrl(card.image);
+      const fallbackSrc = safeImageUrl(card.imageFallback);
       tile.innerHTML = primary ? `
         <img
           class="card-art"
@@ -159,8 +170,8 @@
       await window.Shared.exportCardSheet(
         state.filtered.map((card) => ({
           ...card,
-          exportImage: encodeURI(card.image),
-          image: encodeURI(card.image)
+          exportImage: safeImageUrl(card.image),
+          image: safeImageUrl(card.image)
         })),
         {
           fileBaseName: state.size === "ALL" ? "bg-accessories" : `bg-accessories-${state.size.toLowerCase()}`,
