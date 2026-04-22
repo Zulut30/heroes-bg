@@ -9,12 +9,14 @@ const { rateLimit } = require("./_blizzard");
 //     HearthstoneJSON proxy), so images come from the same place we already
 //     trust.
 
+// Battlegrounds trinkets are NOT marked collectible in Hearthstone, so the
+// cards.collectible.json feed simply doesn't contain them. We have to use
+// the full cards.json. Keep the collectible feed as a backup just in case
+// the layout flips back.
 const HSJSON_URL = (locale) =>
-  `https://api.hearthstonejson.com/v1/latest/${encodeURIComponent(locale)}/cards.collectible.json`;
-// HearthstoneJSON ships separate "all cards" feeds when collectible doesn't
-// include trinkets — fall back to those.
+  `https://api.hearthstonejson.com/v1/latest/${encodeURIComponent(locale)}/cards.json`;
 const HSJSON_FALLBACK_URLS = (locale) => [
-  `https://api.hearthstonejson.com/v1/latest/${encodeURIComponent(locale)}/cards.json`
+  `https://api.hearthstonejson.com/v1/latest/${encodeURIComponent(locale)}/cards.collectible.json`
 ];
 
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -26,12 +28,17 @@ function isTrinket(card) {
   const type = String(card.type || "").toUpperCase();
   if (type === "BATTLEGROUND_TRINKET") return true;
   if (type === "BG_TRINKET") return true;
-  const mechanics = card.mechanics || [];
-  if (mechanics.some((m) => String(m).toUpperCase().includes("BATTLEGROUND_TRINKET"))) return true;
+  if (type.endsWith("_TRINKET")) return true;
+  const mechanics = (card.mechanics || []).map((m) => String(m).toUpperCase());
+  if (mechanics.some((m) => m.includes("TRINKET"))) return true;
   const setStr = String(card.set || "").toUpperCase();
   if (setStr.includes("TRINKET")) return true;
-  // Battlegrounds anomaly cards share some traits but aren't trinkets — guard
-  // by requiring an explicit trinket signal from the type/mechanics above.
+  // Some HearthstoneJSON dumps tag trinkets via referencedTags / classes
+  const refs = (card.referencedTags || []).map((m) => String(m).toUpperCase());
+  if (refs.some((m) => m.includes("TRINKET"))) return true;
+  // Or via the cardClass / classes field carrying BATTLEGROUND_TRINKET_*
+  const classes = [...(card.classes || []), card.cardClass].filter(Boolean).map((m) => String(m).toUpperCase());
+  if (classes.some((m) => m.includes("TRINKET"))) return true;
   return false;
 }
 
@@ -96,9 +103,9 @@ async function fetchJson(url) {
   return response.json();
 }
 
-async function loadAccessories(locale) {
+async function loadAccessories(locale, force = false) {
   const now = Date.now();
-  if (cache.payload && cache.locale === locale && cache.expiresAt > now) {
+  if (!force && cache.payload && cache.locale === locale && cache.expiresAt > now) {
     return cache.payload;
   }
   if (inFlight && inFlight.locale === locale) {
@@ -106,6 +113,7 @@ async function loadAccessories(locale) {
   }
   const promise = (async () => {
     let cards = null;
+    let usedUrl = null;
     let lastError = null;
     const urls = [HSJSON_URL(locale), ...HSJSON_FALLBACK_URLS(locale)];
     for (const url of urls) {
@@ -113,6 +121,7 @@ async function loadAccessories(locale) {
         const data = await fetchJson(url);
         if (Array.isArray(data) && data.length) {
           cards = data;
+          usedUrl = url;
           break;
         }
       } catch (error) {
@@ -127,14 +136,32 @@ async function loadAccessories(locale) {
       if (a.size !== b.size) return a.size === "SMALL" ? -1 : 1;
       return String(a.name).localeCompare(String(b.name), locale.replace("_", "-"));
     });
+    // Diagnostic histogram: helps figure out the right filter when the type
+    // field changes again. Only computed if we found nothing.
+    let typeHistogram = null;
+    let bgSetHistogram = null;
+    if (!trinkets.length) {
+      typeHistogram = {};
+      bgSetHistogram = {};
+      for (const c of cards) {
+        const t = String(c.type || "").toUpperCase();
+        typeHistogram[t] = (typeHistogram[t] || 0) + 1;
+        if (String(c.set || "").toUpperCase().includes("BG") || t.includes("BATTLEGROUND")) {
+          const setKey = String(c.set || "?");
+          bgSetHistogram[setKey] = (bgSetHistogram[setKey] || 0) + 1;
+        }
+      }
+    }
     const payload = {
       source: "HearthstoneJSON",
+      sourceUrl: usedUrl,
       locale,
       total: trinkets.length,
       small: trinkets.filter((t) => t.size === "SMALL"),
       large: trinkets.filter((t) => t.size === "LARGE"),
       accessories: trinkets,
-      fetchedAt: new Date().toISOString()
+      fetchedAt: new Date().toISOString(),
+      diagnostics: trinkets.length ? null : { totalCards: cards.length, typeHistogram, bgSetHistogram }
     };
     cache.payload = payload;
     cache.expiresAt = now + CACHE_TTL_MS;
@@ -159,7 +186,8 @@ module.exports = async function handler(req, res) {
   const locale = localeParam.includes("_") ? localeParam.replace("_", "") : localeParam;
 
   try {
-    const payload = await loadAccessories(locale);
+    const force = req.query?.force === "1" || req.query?.debug === "1";
+    const payload = await loadAccessories(locale, force);
     if (req.query?.debug === "1") {
       res.statusCode = 200;
       res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -167,10 +195,12 @@ module.exports = async function handler(req, res) {
       res.end(JSON.stringify({
         debug: true,
         locale,
+        sourceUrl: payload.sourceUrl,
         total: payload.total,
         small: payload.small.length,
         large: payload.large.length,
-        sample: payload.accessories.slice(0, 3)
+        sample: payload.accessories.slice(0, 3),
+        diagnostics: payload.diagnostics
       }, null, 2));
       return;
     }
