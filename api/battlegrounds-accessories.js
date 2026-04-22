@@ -1,24 +1,34 @@
 const { fetchBlizzardJson, rateLimit } = require("./_blizzard");
 
-// Two upstream sources, both with hard per-call timeouts so this serverless
-// handler always answers before Vercel's 10-second function budget kicks in.
+// Audit summary of why we kept landing on 70 accessories:
+//   1. Blizzard's developer /cards?gameMode=battlegrounds endpoint really
+//      does cap at the current rotation's pool (~70 trinkets for the live
+//      patch). Their developer API is meant for current playable cards.
+//   2. HearthstoneJSON's "latest" snapshot lags multiple patches; their
+//      cards.json is also 5MB+ and burns through the serverless function
+//      budget on a cold start.
+//   3. The hearthstone.blizzard.com /battlegrounds page does show ~220
+//      trinkets but it's a Next.js SPA that hydrates from an internal JSON
+//      endpoint that is gated by Cloudflare's bot challenge — direct
+//      server-side fetch without a real browser session usually returns the
+//      shell HTML with no card data inlined.
 //
-// 1. Blizzard developer API — auth via the shared _blizzard helper. Single
-//    narrow query for the battlegrounds pool, paged a few times. Returns
-//    the canonical current-rotation trinkets.
-// 2. hearthstone.blizzard.com (consumer site) — server-renders the same
-//    trinket list inline; we scrape the embedded JSON.
-//
-// HearthstoneJSON's cards.json is ~5MB and reliably blew past the function
-// budget when downloaded + parsed on a cold serverless instance — dropped.
+// Strategy:
+//   * Probe several Blizzard internal endpoints (the ones the consumer page
+//     uses for SSR and for client-side hydration) and merge what they
+//     return. None of them require auth.
+//   * Fall back to the official Blizzard developer API for the current
+//     rotation pool.
+//   * Always return a 200 with whatever we got, plus a detailed sources.*
+//     report so the front-end / debug query shows exactly which source
+//     contributed and which failed.
 
+const FETCH_TIMEOUT_MS = 4000;
+const SOURCE_TIMEOUT_MS = 7000;
+const PAGE_LIMIT = 4;
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const cache = { payload: null, expiresAt: 0, locale: null };
 let inFlight = null;
-
-const FETCH_TIMEOUT_MS = 4500;
-const SOURCE_TIMEOUT_MS = 7000;
-const PAGE_LIMIT = 4;
 
 function buildRemoteImageProxyUrl(imageUrl) {
   const normalized = String(imageUrl || "").trim();
@@ -60,27 +70,29 @@ function detectSize(card) {
   return "SMALL";
 }
 
-function isTrinketBlizzard(card) {
+function isTrinketCard(card) {
   if (!card) return false;
   if (card.battlegrounds && card.battlegrounds.trinket) return true;
-  const slug = String(card.cardType?.slug || card.type?.slug || card.typeSlug || "").toLowerCase();
+  const slug = String(card.cardType?.slug || card.type?.slug || card.typeSlug || card.type || "").toLowerCase();
   if (slug.includes("trinket")) return true;
   if ([43, 44, 45, 47].includes(Number(card.cardTypeId))) return true;
   const mechanics = (card.mechanics || []).map((m) => String(m && (m.slug || m.name || m)).toUpperCase());
   if (mechanics.some((m) => m.includes("TRINKET"))) return true;
+  const setSlug = String(card.cardSet?.slug || card.set?.slug || card.set || "").toLowerCase();
+  if (setSlug.includes("trinket")) return true;
   return false;
 }
 
-function normalizeBlizzardCard(card, locale) {
-  const id = String(card.id ?? card.cardId ?? card.dbfId ?? "");
-  const upstreamImage = card.image || card.battlegrounds?.image || card.cropImage || "";
+function normalizeCard(card, locale, sourceTag) {
+  const id = String(card.id ?? card.cardId ?? card.dbfId ?? card.slug ?? "");
+  const upstreamImage = card.image || card.battlegrounds?.image || card.cropImage || card.imageUrl || "";
   return {
-    id: `bz-${id}`,
+    id: `${sourceTag.slice(0,2)}-${id}`,
     cardId: id,
     dedupeKey: `${id}|${(card.name || "").toLowerCase()}`,
-    source: "Blizzard",
-    name: card.name || "",
-    text: stripHtml(card.text || ""),
+    source: sourceTag,
+    name: card.name || card.title || "",
+    text: stripHtml(card.text || card.flavorText || ""),
     size: detectSize(card),
     image: upstreamImage ? buildRemoteImageProxyUrl(upstreamImage) : buildArtProxyUrl(id, locale),
     cost: card.manaCost ?? card.cost ?? null,
@@ -89,7 +101,7 @@ function normalizeBlizzardCard(card, locale) {
   };
 }
 
-async function fetchWithTimeout(url, init, timeoutMs = FETCH_TIMEOUT_MS) {
+async function fetchWithTimeout(url, init = {}, timeoutMs = FETCH_TIMEOUT_MS) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -99,7 +111,7 @@ async function fetchWithTimeout(url, init, timeoutMs = FETCH_TIMEOUT_MS) {
   }
 }
 
-// ----- Blizzard -----
+// ------------------------- Blizzard developer API -------------------------
 
 async function fetchBlizzardPaged(blizzardLocale, params, limit = PAGE_LIMIT) {
   const cards = [];
@@ -119,7 +131,7 @@ async function fetchBlizzardPaged(blizzardLocale, params, limit = PAGE_LIMIT) {
   return cards;
 }
 
-async function loadFromBlizzard(locale) {
+async function loadFromBlizzardDev(locale) {
   const blizzardLocale = locale.includes("_") ? locale : (locale.match(/^([a-z]{2})([A-Z]{2})$/) ? `${locale.slice(0,2)}_${locale.slice(2)}` : locale);
   const errors = [];
   const collected = new Map();
@@ -134,11 +146,65 @@ async function loadFromBlizzard(locale) {
     errors.push(`battlegrounds: ${error.message}`);
   }
   const all = [...collected.values()];
-  const trinkets = all.filter(isTrinketBlizzard).map((c) => normalizeBlizzardCard(c, locale));
+  const trinkets = all.filter(isTrinketCard).map((c) => normalizeCard(c, locale, "Blizzard"));
   return { trinkets, totalScanned: all.length, errors };
 }
 
-// ----- hearthstone.blizzard.com -----
+// ------------------------- hearthstone.blizzard.com internal endpoints -----
+
+const HSWEB_INTERNAL_ENDPOINTS = (locale) => {
+  const slug = locale.toLowerCase().replace(/(\w{2})(\w{2})/, "$1-$2");
+  return [
+    `https://hearthstone.blizzard.com/${slug}/api/cards?bgCardType=trinket&pageSize=500&page=1`,
+    `https://hearthstone.blizzard.com/${slug}/api/cards/battlegrounds?cardType=trinket&pageSize=500`,
+    `https://hearthstone.blizzard.com/${slug}/api/v1/cards?bgCardType=trinket&pageSize=500`,
+    `https://hearthstone.blizzard.com/${slug}/api/cards/v2/battlegrounds?bgCardType=trinket&pageSize=500`,
+    `https://hearthstone.blizzard.com/api/cards?bgCardType=trinket&pageSize=500&locale=${slug.replace("-", "_")}`,
+    `https://hearthstone.blizzard.com/api/cards/battlegrounds/trinkets?locale=${slug.replace("-", "_")}`
+  ];
+};
+
+async function loadFromHsWebInternal(locale) {
+  const errors = [];
+  const collected = [];
+  let usedSource = null;
+  for (const url of HSWEB_INTERNAL_ENDPOINTS(locale)) {
+    try {
+      const response = await fetchWithTimeout(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0 Safari/537.36",
+          Accept: "application/json,text/javascript,*/*;q=0.9",
+          "Accept-Language": "ru-RU,ru;q=0.9,en;q=0.8",
+          Referer: `https://hearthstone.blizzard.com/${locale.toLowerCase().replace(/(\w{2})(\w{2})/, "$1-$2")}/battlegrounds?bgCardType=trinket`
+        }
+      }, FETCH_TIMEOUT_MS);
+      if (!response.ok) {
+        errors.push(`${url}: HTTP ${response.status}`);
+        continue;
+      }
+      const text = await response.text();
+      let data = null;
+      try { data = JSON.parse(text); } catch (parseError) {
+        errors.push(`${url}: not JSON (${text.slice(0, 80)})`);
+        continue;
+      }
+      const arr = Array.isArray(data) ? data : (data.cards || data.results || data.items || []);
+      if (Array.isArray(arr) && arr.length) {
+        usedSource = url;
+        for (const card of arr) collected.push(card);
+        break;
+      } else {
+        errors.push(`${url}: parsed JSON but no card array (keys: ${Object.keys(data || {}).slice(0, 4).join(",")})`);
+      }
+    } catch (error) {
+      errors.push(`${url}: ${error.message}`);
+    }
+  }
+  const trinkets = collected.map((c) => normalizeCard(c, locale, "HSWebInternal"));
+  return { trinkets, totalScanned: collected.length, errors, source: usedSource };
+}
+
+// ------------------------- HTML scrape fallback ---------------------------
 
 const HS_DB_PAGE = (locale) => {
   const slug = locale.toLowerCase().replace(/(\w{2})(\w{2})/, "$1-$2");
@@ -164,37 +230,44 @@ function extractEmbeddedJson(html) {
   return blobs;
 }
 
-function deepFindCardArray(obj, depth = 0) {
-  if (!obj || typeof obj !== "object" || depth > 8) return null;
-  if (Array.isArray(obj)) {
-    if (obj.length && typeof obj[0] === "object" && obj[0]
-        && (obj[0].name || obj[0].title)
-        && (obj[0].id !== undefined || obj[0].cardId !== undefined || obj[0].slug)) {
-      return obj;
-    }
-    for (const item of obj) {
-      const found = deepFindCardArray(item, depth + 1);
-      if (found) return found;
-    }
-    return null;
-  }
-  for (const key of Object.keys(obj)) {
-    const found = deepFindCardArray(obj[key], depth + 1);
-    if (found) return found;
-  }
-  return null;
+function isCardLike(item) {
+  if (!item || typeof item !== "object") return false;
+  if (!(item.name || item.title)) return false;
+  if (item.id === undefined && item.cardId === undefined && item.slug === undefined) return false;
+  return true;
 }
 
-async function loadFromHearthstoneDB(locale) {
+function isTrinketLike(item) {
+  if (!isCardLike(item)) return false;
+  return isTrinketCard(item);
+}
+
+function findAllArraysOfTrinkets(obj, depth = 0, found = []) {
+  if (!obj || typeof obj !== "object" || depth > 10) return found;
+  if (Array.isArray(obj)) {
+    if (obj.length >= 5 && obj.every(isCardLike)) {
+      const trinketCount = obj.filter(isTrinketLike).length;
+      if (trinketCount > obj.length / 2) {
+        found.push({ array: obj, trinketCount, total: obj.length, depth });
+      }
+    }
+    for (const item of obj) findAllArraysOfTrinkets(item, depth + 1, found);
+    return found;
+  }
+  for (const key of Object.keys(obj)) findAllArraysOfTrinkets(obj[key], depth + 1, found);
+  return found;
+}
+
+async function loadFromHsDbHtml(locale) {
   const errors = [];
   const url = HS_DB_PAGE(locale);
   let html = "";
   try {
     const response = await fetchWithTimeout(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 BattlegroundsHub/1.0",
-        Accept: "text/html,application/json;q=0.9",
-        "Accept-Language": "ru-RU,ru;q=0.9,en;q=0.8"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9",
+        "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"
       }
     }, FETCH_TIMEOUT_MS);
     if (!response.ok) {
@@ -207,35 +280,19 @@ async function loadFromHearthstoneDB(locale) {
     return { trinkets: [], totalScanned: 0, errors, source: url };
   }
   const blobs = extractEmbeddedJson(html);
-  for (const blob of blobs) {
-    const arr = deepFindCardArray(blob);
-    if (arr && arr.length) {
-      const trinkets = arr.map((card) => {
-        const id = String(card.id ?? card.cardId ?? card.slug ?? "");
-        const upstreamImage = card.image || card.imageUrl || card.crop_image || "";
-        return {
-          id: `db-${id}`,
-          cardId: id,
-          dedupeKey: `${id}|${(card.name || "").toLowerCase()}`,
-          source: "HearthstoneDB",
-          name: card.name || card.title || "",
-          text: stripHtml(card.text || card.flavorText || ""),
-          size: detectSize({
-            ...card,
-            mechanics: (card.mechanics || []).map((m) => (m && (m.slug || m.name || m)) || m)
-          }),
-          image: upstreamImage ? buildRemoteImageProxyUrl(upstreamImage) : buildArtProxyUrl(id, locale),
-          cost: card.manaCost ?? card.cost ?? null,
-          rarity: card.rarity || null,
-          set: card.cardSet?.slug || card.set?.slug || null
-        };
-      }).filter((t) => t.name);
-      return { trinkets, totalScanned: arr.length, errors, source: url };
-    }
+  const candidateArrays = [];
+  for (const blob of blobs) findAllArraysOfTrinkets(blob, 0, candidateArrays);
+  candidateArrays.sort((a, b) => b.trinketCount - a.trinketCount);
+  if (!candidateArrays.length) {
+    errors.push(`${url}: HTML received (${html.length} bytes), ${blobs.length} embedded JSON blobs but none contained a trinket array`);
+    return { trinkets: [], totalScanned: 0, errors, source: url };
   }
-  errors.push(`${url}: HTML received (${html.length} bytes) but no trinket array found`);
-  return { trinkets: [], totalScanned: 0, errors, source: url };
+  const winning = candidateArrays[0];
+  const trinkets = winning.array.filter(isTrinketLike).map((c) => normalizeCard(c, locale, "HearthstoneDB"));
+  return { trinkets, totalScanned: winning.total, errors, source: url };
 }
+
+// ------------------------- Aggregation -----------------------------------
 
 function mergeTrinkets(...lists) {
   const seen = new Map();
@@ -272,22 +329,23 @@ async function loadAccessories(locale, force = false) {
   if (!force && cache.payload && cache.locale === locale && cache.expiresAt > now) {
     return cache.payload;
   }
-  if (inFlight && inFlight.locale === locale) {
-    return inFlight.promise;
-  }
+  if (inFlight && inFlight.locale === locale) return inFlight.promise;
+
   const promise = (async () => {
-    const [hsdb, blizzard] = await Promise.all([
-      withTimeout("HSDB", loadFromHearthstoneDB(locale).catch((error) => ({ trinkets: [], source: null, totalScanned: 0, errors: [`HSDB: ${error.message}`] })), SOURCE_TIMEOUT_MS),
-      withTimeout("Blizzard", loadFromBlizzard(locale).catch((error) => ({ trinkets: [], totalScanned: 0, errors: [`Blizzard: ${error.message}`] })), SOURCE_TIMEOUT_MS)
+    const [hswebInternal, hsdbHtml, blizzardDev] = await Promise.all([
+      withTimeout("HSWebInternal", loadFromHsWebInternal(locale).catch((error) => ({ trinkets: [], source: null, totalScanned: 0, errors: [`HSWebInternal: ${error.message}`] })), SOURCE_TIMEOUT_MS),
+      withTimeout("HSDB", loadFromHsDbHtml(locale).catch((error) => ({ trinkets: [], source: null, totalScanned: 0, errors: [`HSDB: ${error.message}`] })), SOURCE_TIMEOUT_MS),
+      withTimeout("Blizzard", loadFromBlizzardDev(locale).catch((error) => ({ trinkets: [], totalScanned: 0, errors: [`Blizzard: ${error.message}`] })), SOURCE_TIMEOUT_MS)
     ]);
-    const merged = mergeTrinkets(hsdb.trinkets, blizzard.trinkets);
+    const merged = mergeTrinkets(hswebInternal.trinkets, hsdbHtml.trinkets, blizzardDev.trinkets);
     merged.sort((a, b) => {
       if (a.size !== b.size) return a.size === "SMALL" ? -1 : 1;
       return String(a.name).localeCompare(String(b.name), locale.replace("_", "-"));
     });
     const sourceLabel = [
-      hsdb.trinkets.length && "HearthstoneDB",
-      blizzard.trinkets.length && "Blizzard"
+      hswebInternal.trinkets.length && "HSWebInternal",
+      hsdbHtml.trinkets.length && "HearthstoneDB",
+      blizzardDev.trinkets.length && "Blizzard"
     ].filter(Boolean).join(" + ") || "none";
     return {
       source: sourceLabel,
@@ -298,8 +356,9 @@ async function loadAccessories(locale, force = false) {
       accessories: merged,
       fetchedAt: new Date().toISOString(),
       sources: {
-        hsdb: { count: hsdb.trinkets.length, scanned: hsdb.totalScanned, source: hsdb.source, errors: hsdb.errors || [] },
-        blizzard: { count: blizzard.trinkets.length, scanned: blizzard.totalScanned, errors: blizzard.errors || [] }
+        hswebInternal: { count: hswebInternal.trinkets.length, scanned: hswebInternal.totalScanned, source: hswebInternal.source, errors: hswebInternal.errors || [] },
+        hsdbHtml: { count: hsdbHtml.trinkets.length, scanned: hsdbHtml.totalScanned, source: hsdbHtml.source, errors: hsdbHtml.errors || [] },
+        blizzard: { count: blizzardDev.trinkets.length, scanned: blizzardDev.totalScanned, errors: blizzardDev.errors || [] }
       }
     };
   })()
@@ -309,23 +368,16 @@ async function loadAccessories(locale, force = false) {
     cache.locale = locale;
     return payload;
   })
-  .catch((error) => {
-    // Always resolve with an empty payload so the upstream handler never
-    // returns 502; the frontend sees an empty list and falls back gracefully.
-    return {
-      source: "error",
-      locale,
-      total: 0,
-      small: [],
-      large: [],
-      accessories: [],
-      fetchedAt: new Date().toISOString(),
-      sources: {
-        hsdb: { count: 0, scanned: 0, source: null, errors: [error.message] },
-        blizzard: { count: 0, scanned: 0, errors: [error.message] }
-      }
-    };
-  });
+  .catch((error) => ({
+    source: "error",
+    locale,
+    total: 0,
+    small: [],
+    large: [],
+    accessories: [],
+    fetchedAt: new Date().toISOString(),
+    sources: { handler: { errors: [error.message] } }
+  }));
   inFlight = { locale, promise };
   promise.finally(() => { if (inFlight && inFlight.promise === promise) inFlight = null; });
   return promise;
