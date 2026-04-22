@@ -30,6 +30,25 @@ const CACHE_TTL_MS = 60 * 60 * 1000;
 const cache = { payload: null, expiresAt: 0, locale: null };
 let inFlight = null;
 
+function toBcp47(locale) {
+  // Accept "ruRU", "ru_RU", "ru-RU" and always return BCP 47 ("ru-RU").
+  // Intl APIs (localeCompare, Intl.Collator) reject anything else with
+  // "RangeError: Incorrect locale information provided".
+  if (!locale) return "ru-RU";
+  const compact = String(locale).trim();
+  if (compact.includes("_")) return compact.replace("_", "-");
+  if (compact.includes("-")) return compact;
+  return compact.replace(/^([a-zA-Z]{2})([a-zA-Z]{2})$/, "$1-$2");
+}
+
+function safeLocaleCompare(a, b, locale) {
+  try {
+    return String(a).localeCompare(String(b), toBcp47(locale));
+  } catch (error) {
+    return String(a).localeCompare(String(b));
+  }
+}
+
 function buildRemoteImageProxyUrl(imageUrl) {
   const normalized = String(imageUrl || "").trim();
   return normalized ? `/api/remote-image?src=${encodeURIComponent(normalized)}` : "";
@@ -340,7 +359,7 @@ async function loadAccessories(locale, force = false) {
     const merged = mergeTrinkets(hswebInternal.trinkets, hsdbHtml.trinkets, blizzardDev.trinkets);
     merged.sort((a, b) => {
       if (a.size !== b.size) return a.size === "SMALL" ? -1 : 1;
-      return String(a.name).localeCompare(String(b.name), locale.replace("_", "-"));
+      return safeLocaleCompare(a.name, b.name, locale);
     });
     const sourceLabel = [
       hswebInternal.trinkets.length && "HSWebInternal",
