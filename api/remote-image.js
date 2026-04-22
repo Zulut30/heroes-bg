@@ -5,7 +5,10 @@ const ALLOWED_HOST_PATTERNS = [
   /(?:^|\.)battle\.net$/i,
   /(?:^|\.)hearthstonejson\.com$/i,
   /(?:^|\.)akamaized\.net$/i,
-  /(?:^|\.)cloudfront\.net$/i
+  /(?:^|\.)akamaihd\.net$/i,
+  /(?:^|\.)cloudfront\.net$/i,
+  /(?:^|\.)bnetcdn\.com$/i,
+  /(?:^|\.)blzstatic\.com$/i
 ];
 
 function isAllowedHost(hostname = "") {

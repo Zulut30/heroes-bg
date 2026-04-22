@@ -37,8 +37,19 @@ function isTrinket(card) {
 
 function detectSize(card) {
   const trinket = card.battlegrounds && card.battlegrounds.trinket;
-  if (trinket && (trinket.tier === 1 || trinket.size === "SMALL" || trinket.size === "LESSER")) return "SMALL";
-  if (trinket && (trinket.tier === 2 || trinket.size === "LARGE" || trinket.size === "GREATER")) return "LARGE";
+  if (trinket) {
+    const t = trinket.tier ?? trinket.level ?? trinket.size;
+    if (t === 1 || t === "SMALL" || t === "LESSER" || t === "lesser") return "SMALL";
+    if (t === 2 || t === "LARGE" || t === "GREATER" || t === "greater") return "LARGE";
+  }
+  // Mana cost is the most reliable signal seen on Hearthstone trinkets:
+  // small trinkets cost 1 anima, large cost 2. (also covers the "Lesser"/
+  // "Greater" English convention.)
+  if (card.manaCost === 1) return "SMALL";
+  if (card.manaCost === 2) return "LARGE";
+  // Tag-based patterns observed in Blizzard data
+  if (Array.isArray(card.mechanics) && card.mechanics.includes("BATTLEGROUND_TRINKET_LARGE")) return "LARGE";
+  if (Array.isArray(card.mechanics) && card.mechanics.includes("BATTLEGROUND_TRINKET_SMALL")) return "SMALL";
   if (card.battlegrounds && card.battlegrounds.tier === 1) return "SMALL";
   if (card.battlegrounds && card.battlegrounds.tier === 2) return "LARGE";
   if (card.cardTypeId === 43) return "SMALL";
@@ -71,12 +82,33 @@ module.exports = async function handler(req, res) {
     const battlegroundCards = await fetchAllBattlegroundCards(locale);
     const trinkets = battlegroundCards.filter(isTrinket);
 
+    if (req.query?.debug === "1") {
+      sendJson(res, 200, {
+        debug: true,
+        totalBgCards: battlegroundCards.length,
+        trinketCount: trinkets.length,
+        sample: trinkets.slice(0, 3),
+        cardTypeIdHistogram: trinkets.reduce((acc, c) => {
+          const k = String(c.cardTypeId);
+          acc[k] = (acc[k] || 0) + 1;
+          return acc;
+        }, {}),
+        manaCostHistogram: trinkets.reduce((acc, c) => {
+          const k = String(c.manaCost ?? "?");
+          acc[k] = (acc[k] || 0) + 1;
+          return acc;
+        }, {})
+      }, { cacheControl: "no-store" });
+      return;
+    }
+
     const accessories = trinkets.map((card) => {
       const size = detectSize(card);
-      const upstreamImage = card.battlegrounds?.image
-        || card.image
+      const upstreamImage = card.image
+        || card.battlegrounds?.image
         || card.cropImage
         || card.battlegrounds?.imageGold
+        || card.imageGold
         || "";
       const upstreamCrop = card.cropImage || upstreamImage;
       return {
@@ -89,6 +121,7 @@ module.exports = async function handler(req, res) {
         image: buildRemoteImageProxyUrl(upstreamImage),
         cropImage: buildRemoteImageProxyUrl(upstreamCrop),
         imageOriginal: upstreamImage,
+        manaCost: card.manaCost ?? null,
         rarityId: card.rarityId || null,
         cardTypeId: card.cardTypeId || null,
         battlegrounds: card.battlegrounds || null

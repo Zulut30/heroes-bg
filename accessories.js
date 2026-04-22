@@ -93,16 +93,31 @@
       const tile = document.createElement("article");
       tile.className = "card-tile";
       tile.tabIndex = 0;
-      tile.innerHTML = `
+      const imageSrc = card.image ? encodeURI(card.image) : "";
+      const safeName = window.Shared.escapeHtml(card.name);
+      tile.innerHTML = imageSrc ? `
         <img
           class="card-art"
-          src="${encodeURI(card.image)}"
-          alt="${window.Shared.escapeHtml(card.name)}"
+          src="${imageSrc}"
+          alt="${safeName}"
           loading="lazy"
           decoding="async"
           fetchpriority="low"
         >
+      ` : `
+        <div class="card-art card-art-placeholder" role="img" aria-label="${safeName}">
+          <span>${safeName.slice(0, 2)}</span>
+        </div>
       `;
+      const img = tile.querySelector("img");
+      if (img) {
+        img.addEventListener("error", () => {
+          img.replaceWith(Object.assign(document.createElement("div"), {
+            className: "card-art card-art-placeholder",
+            innerHTML: `<span>${safeName.slice(0, 2)}</span>`
+          }));
+        }, { once: true });
+      }
       const index = state.filtered.indexOf(card);
       const activate = () => openLightbox(index);
       tile.addEventListener("click", activate);
