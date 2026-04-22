@@ -167,10 +167,31 @@
     }
   }
 
-  function loadAccessories() {
+  function localFallback() {
     const payload = window.accessoriesData || {};
-    state.cards = [...(payload.small || []), ...(payload.large || [])];
-    applyFilters();
+    return [...(payload.small || []), ...(payload.large || [])];
+  }
+
+  async function loadAccessories() {
+    status.textContent = "Загружаю аксессуары из Blizzard API...";
+    try {
+      const response = await fetch("./api/battlegrounds-accessories?locale=ru_RU", {
+        headers: { Accept: "application/json" }
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const payload = await response.json();
+      const fromApi = [...(payload.small || []), ...(payload.large || [])];
+      if (fromApi.length) {
+        state.cards = fromApi;
+        applyFilters();
+        return;
+      }
+      throw new Error("API вернул пустой список аксессуаров");
+    } catch (error) {
+      console.warn("Не удалось загрузить аксессуары из API, использую локальный набор.", error);
+      state.cards = localFallback();
+      applyFilters();
+    }
   }
 
   searchInput.addEventListener("input", window.Shared.debounce((event) => {
