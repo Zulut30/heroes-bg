@@ -266,7 +266,7 @@ async function loadFromHsjson(locale) {
   return { trinkets: [], source: null, totalScanned: 0, errors };
 }
 
-async function fetchBlizzardPaged(blizzardLocale, params, limit = 16) {
+async function fetchBlizzardPaged(blizzardLocale, params, limit = 6) {
   const cards = [];
   let page = 1;
   let pageCount = 1;
@@ -284,73 +284,28 @@ async function fetchBlizzardPaged(blizzardLocale, params, limit = 16) {
   return cards;
 }
 
-let cachedTrinketTypeIds = null;
-async function fetchTrinketTypeIds(blizzardLocale) {
-  if (cachedTrinketTypeIds) return cachedTrinketTypeIds;
-  try {
-    const metadata = await fetchBlizzardJson("/metadata", { locale: blizzardLocale });
-    const types = metadata.types || metadata.cardTypes || [];
-    const ids = types
-      .filter((t) => /trinket/i.test(t.name || t.slug || ""))
-      .map((t) => Number(t.id))
-      .filter(Number.isFinite);
-    cachedTrinketTypeIds = ids;
-    return ids;
-  } catch (error) {
-    return [];
-  }
-}
-
 async function loadFromBlizzard(locale) {
   const blizzardLocale = locale.includes("_") ? locale : (locale.match(/^([a-z]{2})([A-Z]{2})$/) ? `${locale.slice(0,2)}_${locale.slice(2)}` : locale);
   const errors = [];
-  // Issue many queries in parallel to widen coverage:
-  //   * Current Battlegrounds rotation
-  //   * Duos rotation (separate gameMode)
-  //   * Trinket-specific sets across the various slug shapes Blizzard
-  //     has shipped
-  //   * The whole battlegrounds pool sorted by manaCost so trinkets land
-  //     in the first pages even if pageCount lies
-  //   * cardTypeId=47 (the numeric type id for BG_TRINKET in Hearthstone
-  //     metadata) — works as a filter when the slug doesn't
-  // Look up the actual trinket cardTypeId from metadata (Blizzard sometimes
-  // shifts the numbers between patches). Falls back to the few we've seen.
-  const dynamicTrinketTypeIds = await fetchTrinketTypeIds(blizzardLocale);
-  const trinketTypeIds = dynamicTrinketTypeIds.length ? dynamicTrinketTypeIds : [43, 44, 45, 47];
-
-  const queries = [
-    { gameMode: "battlegrounds" },
-    { gameMode: "battlegrounds_duos" },
-    { gameMode: "battlegrounds", manaCost: "1" },
-    { gameMode: "battlegrounds", manaCost: "2" },
-    { gameMode: "battlegrounds", set: "battleground-trinket" },
-    { gameMode: "battlegrounds", set: "bg-trinket" },
-    { gameMode: "battlegrounds", set: "bg_trinket" },
-    { gameMode: "battlegrounds", set: "bg31" },
-    { gameMode: "battlegrounds", set: "bg32" },
-    { gameMode: "battlegrounds", set: "bg33" },
-    { gameMode: "battlegrounds", set: "bg34" },
-    { gameMode: "battlegrounds", set: "bg35" },
-    { set: "battleground-trinket" },
-    { set: "bg-trinket" },
-    ...trinketTypeIds.flatMap((id) => [
-      { gameMode: "battlegrounds", cardTypeId: id },
-      { cardTypeId: id }
-    ])
-  ];
+  // Two narrow queries — the previous fan-out across 14+ filters * many
+  // pages was hammering Blizzard for >100 sequential HTTP calls and
+  // exhausting Vercel's 10-second function budget (the result was a 502
+  // and the page silently fell back to the local accessories file).
+  // gameMode covers both BG and Duos pools; the trinket filter then runs
+  // in our process.
   const collected = new Map();
-  await Promise.all(queries.map(async (params) => {
+  for (const gameMode of ["battlegrounds", "battlegrounds_duos"]) {
     try {
-      const pageCards = await fetchBlizzardPaged(blizzardLocale, params);
+      const pageCards = await fetchBlizzardPaged(blizzardLocale, { gameMode });
       for (const card of pageCards) {
         const key = String(card.id ?? card.cardId ?? card.dbfId ?? card.slug ?? "");
         if (!key) continue;
         if (!collected.has(key)) collected.set(key, card);
       }
     } catch (error) {
-      errors.push(`${JSON.stringify(params)}: ${error.message}`);
+      errors.push(`${gameMode}: ${error.message}`);
     }
-  }));
+  }
   if (!collected.size) {
     return { trinkets: [], totalScanned: 0, errors };
   }
@@ -387,10 +342,21 @@ async function loadAccessories(locale, force = false) {
     return inFlight.promise;
   }
   const promise = (async () => {
+    // Hard per-source timeout so one slow upstream can't drag the whole
+    // serverless function over Vercel's request budget.
+    const withTimeout = (label, work, ms) => Promise.race([
+      work,
+      new Promise((resolve) => setTimeout(() => resolve({
+        trinkets: [],
+        totalScanned: 0,
+        errors: [`${label}: timeout after ${ms}ms`],
+        source: null
+      }), ms))
+    ]);
     const [blizzard, hsjson, hsdb] = await Promise.all([
-      loadFromBlizzard(locale).catch((error) => ({ trinkets: [], totalScanned: 0, errors: [`Blizzard: ${error.message}`] })),
-      loadFromHsjson(locale).catch((error) => ({ trinkets: [], source: null, totalScanned: 0, errors: [`HSJSON: ${error.message}`] })),
-      loadFromHearthstoneDB(locale).catch((error) => ({ trinkets: [], source: null, totalScanned: 0, errors: [`HSDB: ${error.message}`] }))
+      withTimeout("Blizzard", loadFromBlizzard(locale).catch((error) => ({ trinkets: [], totalScanned: 0, errors: [`Blizzard: ${error.message}`] })), 7000),
+      withTimeout("HSJSON", loadFromHsjson(locale).catch((error) => ({ trinkets: [], source: null, totalScanned: 0, errors: [`HSJSON: ${error.message}`] })), 6000),
+      withTimeout("HSDB", loadFromHearthstoneDB(locale).catch((error) => ({ trinkets: [], source: null, totalScanned: 0, errors: [`HSDB: ${error.message}`] })), 5000)
     ]);
     // HSDB first because it's the canonical "what Blizzard's site shows"
     // — when it works it has the largest set. Blizzard API and HSJSON
