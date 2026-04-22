@@ -147,6 +147,109 @@ async function fetchHsjson(url) {
   return response.json();
 }
 
+// Source 3 — Blizzard's consumer-facing Hearthstone DB page. The page
+// at /<locale>/battlegrounds?bgCardType=trinket is server-rendered with
+// the full card list inlined in the JSON state so we can scrape it
+// without a browser. We never spoof an interactive client; the user-agent
+// is honest about who we are.
+const HS_DB_PAGE = (locale) => {
+  const slug = locale.toLowerCase().replace(/(\w{2})(\w{2})/, "$1-$2");
+  return `https://hearthstone.blizzard.com/${slug}/battlegrounds?bgCardType=trinket`;
+};
+
+function extractEmbeddedJson(html) {
+  const blobs = [];
+  const next = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+  if (next) {
+    try { blobs.push(JSON.parse(next[1])); } catch {}
+  }
+  const initial = html.match(/window\.__INITIAL_STATE__\s*=\s*(\{[\s\S]*?\})\s*;/);
+  if (initial) {
+    try { blobs.push(JSON.parse(initial[1])); } catch {}
+  }
+  // Generic application/json scripts > 1KB
+  const re = /<script[^>]*type=["']application\/json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let m;
+  while ((m = re.exec(html))) {
+    if (m[1].length < 1000) continue;
+    try { blobs.push(JSON.parse(m[1])); } catch {}
+  }
+  return blobs;
+}
+
+function deepFindCardArray(obj, depth = 0) {
+  if (!obj || typeof obj !== "object" || depth > 8) return null;
+  if (Array.isArray(obj)) {
+    if (obj.length && typeof obj[0] === "object" && obj[0]
+        && (obj[0].name || obj[0].title)
+        && (obj[0].id !== undefined || obj[0].cardId !== undefined || obj[0].slug)) {
+      return obj;
+    }
+    for (const item of obj) {
+      const found = deepFindCardArray(item, depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+  for (const key of Object.keys(obj)) {
+    const found = deepFindCardArray(obj[key], depth + 1);
+    if (found) return found;
+  }
+  return null;
+}
+
+async function loadFromHearthstoneDB(locale) {
+  const errors = [];
+  const url = HS_DB_PAGE(locale);
+  let html = "";
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 BattlegroundsHub/1.0",
+        Accept: "text/html,application/json;q=0.9",
+        "Accept-Language": "ru-RU,ru;q=0.9,en;q=0.8"
+      }
+    });
+    if (!response.ok) {
+      errors.push(`${url}: HTTP ${response.status}`);
+      return { trinkets: [], totalScanned: 0, errors, source: url };
+    }
+    html = await response.text();
+  } catch (error) {
+    errors.push(`${url}: ${error.message}`);
+    return { trinkets: [], totalScanned: 0, errors, source: url };
+  }
+  const blobs = extractEmbeddedJson(html);
+  for (const blob of blobs) {
+    const arr = deepFindCardArray(blob);
+    if (arr && arr.length) {
+      const trinkets = arr.map((card) => {
+        const id = String(card.id ?? card.cardId ?? card.slug ?? "");
+        const upstreamImage = card.image || card.imageUrl || card.crop_image || "";
+        return {
+          id: `db-${id}`,
+          cardId: id,
+          dedupeKey: `${id}|${(card.name || "").toLowerCase()}`,
+          source: "HearthstoneDB",
+          name: card.name || card.title || "",
+          text: stripHtml(card.text || card.flavorText || ""),
+          size: detectSize({
+            ...card,
+            mechanics: (card.mechanics || []).map((m) => (m && (m.slug || m.name || m)) || m)
+          }),
+          image: upstreamImage ? buildRemoteImageProxyUrl(upstreamImage) : buildArtProxyUrl(id, locale),
+          cost: card.manaCost ?? card.cost ?? null,
+          rarity: card.rarity || null,
+          set: card.cardSet?.slug || card.set?.slug || null
+        };
+      }).filter((t) => t.name);
+      return { trinkets, totalScanned: arr.length, errors, source: url };
+    }
+  }
+  errors.push(`${url}: HTML received (${html.length} bytes) but no trinket array found`);
+  return { trinkets: [], totalScanned: 0, errors, source: url };
+}
+
 async function loadFromHsjson(locale) {
   const errors = [];
   const urls = [HSJSON_ALL_URL(locale), ...HSJSON_FALLBACK_URLS(locale)];
@@ -163,32 +266,60 @@ async function loadFromHsjson(locale) {
   return { trinkets: [], source: null, totalScanned: 0, errors };
 }
 
+async function fetchBlizzardPaged(blizzardLocale, params, limit = 12) {
+  const cards = [];
+  let page = 1;
+  let pageCount = 1;
+  while (page <= pageCount && page <= limit) {
+    const response = await fetchBlizzardJson("/cards", {
+      locale: blizzardLocale,
+      pageSize: 500,
+      page,
+      ...params
+    });
+    cards.push(...(response.cards || []));
+    pageCount = Number(response.pageCount) || 1;
+    page += 1;
+  }
+  return cards;
+}
+
 async function loadFromBlizzard(locale) {
-  // _blizzard helper expects ru_RU style locale
   const blizzardLocale = locale.includes("_") ? locale : (locale.match(/^([a-z]{2})([A-Z]{2})$/) ? `${locale.slice(0,2)}_${locale.slice(2)}` : locale);
   const errors = [];
-  const cards = [];
-  try {
-    let page = 1;
-    let pageCount = 1;
-    while (page <= pageCount && page <= 8) {
-      const response = await fetchBlizzardJson("/cards", {
-        locale: blizzardLocale,
-        gameMode: "battlegrounds",
-        pageSize: 500,
-        page
-      });
-      const pageCards = response.cards || [];
-      cards.push(...pageCards);
-      pageCount = Number(response.pageCount) || 1;
-      page += 1;
+  // Issue several queries in parallel to widen coverage:
+  //   1. Current battlegrounds rotation
+  //   2. Battlegrounds duos rotation (separate gameMode)
+  //   3. The dedicated trinket set
+  // Anything new Blizzard adds in any pool gets folded into the merged
+  // result via dedupe.
+  const queries = [
+    { gameMode: "battlegrounds" },
+    { gameMode: "battlegrounds_duos" },
+    { gameMode: "battlegrounds", set: "battleground-trinket" },
+    { gameMode: "battlegrounds", set: "bg-trinket" },
+    { set: "battleground-trinket" },
+    { set: "bg-trinket" }
+  ];
+  const collected = new Map();
+  for (const params of queries) {
+    try {
+      const pageCards = await fetchBlizzardPaged(blizzardLocale, params);
+      for (const card of pageCards) {
+        const key = String(card.id ?? card.cardId ?? card.dbfId ?? card.slug ?? "");
+        if (!key) continue;
+        if (!collected.has(key)) collected.set(key, card);
+      }
+    } catch (error) {
+      errors.push(`${JSON.stringify(params)}: ${error.message}`);
     }
-  } catch (error) {
-    errors.push(`Blizzard: ${error.message}`);
+  }
+  if (!collected.size) {
     return { trinkets: [], totalScanned: 0, errors };
   }
-  const trinkets = cards.filter(isTrinketBlizzard).map((c) => normalizeBlizzardCard(c, locale));
-  return { trinkets, totalScanned: cards.length, errors };
+  const all = [...collected.values()];
+  const trinkets = all.filter(isTrinketBlizzard).map((c) => normalizeBlizzardCard(c, locale));
+  return { trinkets, totalScanned: all.length, errors };
 }
 
 function mergeTrinkets(...lists) {
@@ -219,17 +350,25 @@ async function loadAccessories(locale, force = false) {
     return inFlight.promise;
   }
   const promise = (async () => {
-    const [blizzard, hsjson] = await Promise.all([
+    const [blizzard, hsjson, hsdb] = await Promise.all([
       loadFromBlizzard(locale).catch((error) => ({ trinkets: [], totalScanned: 0, errors: [`Blizzard: ${error.message}`] })),
-      loadFromHsjson(locale).catch((error) => ({ trinkets: [], source: null, totalScanned: 0, errors: [`HSJSON: ${error.message}`] }))
+      loadFromHsjson(locale).catch((error) => ({ trinkets: [], source: null, totalScanned: 0, errors: [`HSJSON: ${error.message}`] })),
+      loadFromHearthstoneDB(locale).catch((error) => ({ trinkets: [], source: null, totalScanned: 0, errors: [`HSDB: ${error.message}`] }))
     ]);
-    const merged = mergeTrinkets(blizzard.trinkets, hsjson.trinkets);
+    // HSDB first because it's the canonical "what Blizzard's site shows"
+    // — when it works it has the largest set. Blizzard API and HSJSON
+    // backfill anything HSDB misses.
+    const merged = mergeTrinkets(hsdb.trinkets, blizzard.trinkets, hsjson.trinkets);
     merged.sort((a, b) => {
       if (a.size !== b.size) return a.size === "SMALL" ? -1 : 1;
       return String(a.name).localeCompare(String(b.name), locale.replace("_", "-"));
     });
     const payload = {
-      source: blizzard.trinkets.length ? "Blizzard + HearthstoneJSON" : "HearthstoneJSON",
+      source: [
+        hsdb.trinkets.length && "HearthstoneDB",
+        blizzard.trinkets.length && "Blizzard",
+        hsjson.trinkets.length && "HearthstoneJSON"
+      ].filter(Boolean).join(" + ") || "none",
       locale,
       total: merged.length,
       small: merged.filter((t) => t.size === "SMALL"),
@@ -237,6 +376,7 @@ async function loadAccessories(locale, force = false) {
       accessories: merged,
       fetchedAt: new Date().toISOString(),
       sources: {
+        hsdb: { count: hsdb.trinkets.length, scanned: hsdb.totalScanned, source: hsdb.source, errors: hsdb.errors || [] },
         blizzard: { count: blizzard.trinkets.length, scanned: blizzard.totalScanned, errors: blizzard.errors || [] },
         hsjson: { count: hsjson.trinkets.length, scanned: hsjson.totalScanned, source: hsjson.source, errors: hsjson.errors || [] }
       }
