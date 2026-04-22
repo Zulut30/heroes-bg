@@ -102,7 +102,7 @@
 
     state.filtered.forEach((card) => {
       const tile = document.createElement("article");
-      tile.className = "card-tile";
+      tile.className = "card-tile accessory-tile";
       tile.tabIndex = 0;
       const safeName = window.Shared.escapeHtml(card.name);
       const initials = safeName.replace(/[^A-Za-zА-Яа-я]/g, "").slice(0, 2) || "?";

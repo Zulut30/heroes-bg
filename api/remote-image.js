@@ -3,12 +3,18 @@ const { rateLimit } = require("./_blizzard");
 const ALLOWED_HOST_PATTERNS = [
   /(?:^|\.)blizzard\.com$/i,
   /(?:^|\.)battle\.net$/i,
+  /(?:^|\.)battlenet\.com\.cn$/i,
+  /(?:^|\.)bnetcdn\.com$/i,
+  /(?:^|\.)bnetcms\.com$/i,
+  /(?:^|\.)blzstatic\.com$/i,
+  /(?:^|\.)blz-contentstack\.com$/i,
   /(?:^|\.)hearthstonejson\.com$/i,
+  /(?:^|\.)hearthsim\.com$/i,
+  /(?:^|\.)hsreplay\.net$/i,
   /(?:^|\.)akamaized\.net$/i,
   /(?:^|\.)akamaihd\.net$/i,
   /(?:^|\.)cloudfront\.net$/i,
-  /(?:^|\.)bnetcdn\.com$/i,
-  /(?:^|\.)blzstatic\.com$/i
+  /(?:^|\.)cloudflare\.net$/i
 ];
 
 function isAllowedHost(hostname = "") {

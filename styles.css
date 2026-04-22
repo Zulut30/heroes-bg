@@ -592,6 +592,16 @@ h1 {
   background: transparent;
 }
 
+/* Accessory tiles use cover-fit so images of any aspect (full card render
+   vs. landscape splash crop returned by some upstream sources) fill the
+   portrait slot cleanly instead of letterboxing into a tiny strip. */
+body .accessories-grid .card-art,
+.accessory-tile .card-art {
+  object-fit: cover;
+  object-position: center top;
+  background: linear-gradient(160deg, rgba(20, 30, 48, 0.6), rgba(8, 14, 24, 0.7));
+}
+
 .card-art-placeholder {
   display: grid;
   place-items: center;

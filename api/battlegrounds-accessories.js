@@ -103,29 +103,26 @@ function isTrinketCard(card) {
 }
 
 function pickImageUrl(card) {
-  // Try every plausible field name a Hearthstone card payload has shipped
-  // with over the last few schema revisions, including consumer-page shapes.
+  // Only accept full card-render fields. The cropImage / imageOriginal /
+  // splash variants are wide landscape art and look broken in our portrait
+  // accessory tiles, so we filter them out and let the placeholder kick in
+  // instead of rendering chaos.
   const candidates = [
     card.image,
     card.imageUrl,
     card.image_url,
     card.imageRender,
     card.image_render,
-    card.cropImage,
-    card.crop_image,
-    card.cropUrl,
     card.battlegrounds?.image,
     card.battlegrounds?.imageGold,
     card.imageGold,
     card.image_gold,
     card.assets?.image,
     card.assets?.png,
-    card.assets?.jpg,
     card.images?.normal,
     card.images?.golden,
     card.media?.image,
-    card.media?.png,
-    card.imageOriginal
+    card.media?.png
   ];
   return candidates.find((u) => typeof u === "string" && u.trim()) || "";
 }
