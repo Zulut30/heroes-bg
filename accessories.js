@@ -93,31 +93,16 @@
       const tile = document.createElement("article");
       tile.className = "card-tile";
       tile.tabIndex = 0;
-      const imageSrc = card.image ? encodeURI(card.image) : "";
-      const safeName = window.Shared.escapeHtml(card.name);
-      tile.innerHTML = imageSrc ? `
+      tile.innerHTML = `
         <img
           class="card-art"
-          src="${imageSrc}"
-          alt="${safeName}"
+          src="${encodeURI(card.image)}"
+          alt="${window.Shared.escapeHtml(card.name)}"
           loading="lazy"
           decoding="async"
           fetchpriority="low"
         >
-      ` : `
-        <div class="card-art card-art-placeholder" role="img" aria-label="${safeName}">
-          <span>${safeName.slice(0, 2)}</span>
-        </div>
       `;
-      const img = tile.querySelector("img");
-      if (img) {
-        img.addEventListener("error", () => {
-          img.replaceWith(Object.assign(document.createElement("div"), {
-            className: "card-art card-art-placeholder",
-            innerHTML: `<span>${safeName.slice(0, 2)}</span>`
-          }));
-        }, { once: true });
-      }
       const index = state.filtered.indexOf(card);
       const activate = () => openLightbox(index);
       tile.addEventListener("click", activate);
@@ -182,31 +167,10 @@
     }
   }
 
-  function localFallback() {
+  function loadAccessories() {
     const payload = window.accessoriesData || {};
-    return [...(payload.small || []), ...(payload.large || [])];
-  }
-
-  async function loadAccessories() {
-    status.textContent = "Загружаю аксессуары из Blizzard API...";
-    try {
-      const response = await fetch("./api/battlegrounds-accessories?locale=ru_RU", {
-        headers: { Accept: "application/json" }
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const payload = await response.json();
-      const fromApi = [...(payload.small || []), ...(payload.large || [])];
-      if (fromApi.length) {
-        state.cards = fromApi;
-        applyFilters();
-        return;
-      }
-      throw new Error("API вернул пустой список аксессуаров");
-    } catch (error) {
-      console.warn("Не удалось загрузить аксессуары из API, использую локальный набор.", error);
-      state.cards = localFallback();
-      applyFilters();
-    }
+    state.cards = [...(payload.small || []), ...(payload.large || [])];
+    applyFilters();
   }
 
   searchInput.addEventListener("input", window.Shared.debounce((event) => {
