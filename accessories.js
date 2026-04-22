@@ -93,16 +93,29 @@
       const tile = document.createElement("article");
       tile.className = "card-tile";
       tile.tabIndex = 0;
+      const safeName = window.Shared.escapeHtml(card.name);
+      const initials = safeName.replace(/[^A-Za-zА-Яа-я]/g, "").slice(0, 2) || "?";
       tile.innerHTML = `
         <img
           class="card-art"
           src="${encodeURI(card.image)}"
-          alt="${window.Shared.escapeHtml(card.name)}"
+          alt="${safeName}"
           loading="lazy"
           decoding="async"
           fetchpriority="low"
         >
       `;
+      const img = tile.querySelector("img");
+      if (img) {
+        img.addEventListener("error", () => {
+          const placeholder = document.createElement("div");
+          placeholder.className = "card-art card-art-placeholder";
+          placeholder.setAttribute("role", "img");
+          placeholder.setAttribute("aria-label", card.name || "");
+          placeholder.innerHTML = `<span>${initials}</span>`;
+          img.replaceWith(placeholder);
+        }, { once: true });
+      }
       const index = state.filtered.indexOf(card);
       const activate = () => openLightbox(index);
       tile.addEventListener("click", activate);
@@ -167,10 +180,34 @@
     }
   }
 
-  function loadAccessories() {
+  function localAccessories() {
     const payload = window.accessoriesData || {};
-    state.cards = [...(payload.small || []), ...(payload.large || [])];
+    return [...(payload.small || []), ...(payload.large || [])];
+  }
+
+  async function loadAccessories() {
+    state.cards = localAccessories();
     applyFilters();
+    if (!state.cards.length) {
+      status.textContent = "Загружаю аксессуары…";
+    }
+    try {
+      const response = await fetch("./api/battlegrounds-accessories?locale=ruRU", {
+        headers: { Accept: "application/json" }
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const payload = await response.json();
+      const fromApi = [...(payload.small || []), ...(payload.large || [])];
+      if (fromApi.length) {
+        state.cards = fromApi;
+        applyFilters();
+      }
+    } catch (error) {
+      console.warn("HearthstoneJSON недоступен, остаюсь на локальных аксессуарах.", error);
+      if (!state.cards.length) {
+        status.textContent = `Не удалось загрузить аксессуары: ${error.message}`;
+      }
+    }
   }
 
   searchInput.addEventListener("input", window.Shared.debounce((event) => {
