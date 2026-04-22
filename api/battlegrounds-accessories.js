@@ -266,7 +266,7 @@ async function loadFromHsjson(locale) {
   return { trinkets: [], source: null, totalScanned: 0, errors };
 }
 
-async function fetchBlizzardPaged(blizzardLocale, params, limit = 12) {
+async function fetchBlizzardPaged(blizzardLocale, params, limit = 16) {
   const cards = [];
   let page = 1;
   let pageCount = 1;
@@ -284,25 +284,62 @@ async function fetchBlizzardPaged(blizzardLocale, params, limit = 12) {
   return cards;
 }
 
+let cachedTrinketTypeIds = null;
+async function fetchTrinketTypeIds(blizzardLocale) {
+  if (cachedTrinketTypeIds) return cachedTrinketTypeIds;
+  try {
+    const metadata = await fetchBlizzardJson("/metadata", { locale: blizzardLocale });
+    const types = metadata.types || metadata.cardTypes || [];
+    const ids = types
+      .filter((t) => /trinket/i.test(t.name || t.slug || ""))
+      .map((t) => Number(t.id))
+      .filter(Number.isFinite);
+    cachedTrinketTypeIds = ids;
+    return ids;
+  } catch (error) {
+    return [];
+  }
+}
+
 async function loadFromBlizzard(locale) {
   const blizzardLocale = locale.includes("_") ? locale : (locale.match(/^([a-z]{2})([A-Z]{2})$/) ? `${locale.slice(0,2)}_${locale.slice(2)}` : locale);
   const errors = [];
-  // Issue several queries in parallel to widen coverage:
-  //   1. Current battlegrounds rotation
-  //   2. Battlegrounds duos rotation (separate gameMode)
-  //   3. The dedicated trinket set
-  // Anything new Blizzard adds in any pool gets folded into the merged
-  // result via dedupe.
+  // Issue many queries in parallel to widen coverage:
+  //   * Current Battlegrounds rotation
+  //   * Duos rotation (separate gameMode)
+  //   * Trinket-specific sets across the various slug shapes Blizzard
+  //     has shipped
+  //   * The whole battlegrounds pool sorted by manaCost so trinkets land
+  //     in the first pages even if pageCount lies
+  //   * cardTypeId=47 (the numeric type id for BG_TRINKET in Hearthstone
+  //     metadata) — works as a filter when the slug doesn't
+  // Look up the actual trinket cardTypeId from metadata (Blizzard sometimes
+  // shifts the numbers between patches). Falls back to the few we've seen.
+  const dynamicTrinketTypeIds = await fetchTrinketTypeIds(blizzardLocale);
+  const trinketTypeIds = dynamicTrinketTypeIds.length ? dynamicTrinketTypeIds : [43, 44, 45, 47];
+
   const queries = [
     { gameMode: "battlegrounds" },
     { gameMode: "battlegrounds_duos" },
+    { gameMode: "battlegrounds", manaCost: "1" },
+    { gameMode: "battlegrounds", manaCost: "2" },
     { gameMode: "battlegrounds", set: "battleground-trinket" },
     { gameMode: "battlegrounds", set: "bg-trinket" },
+    { gameMode: "battlegrounds", set: "bg_trinket" },
+    { gameMode: "battlegrounds", set: "bg31" },
+    { gameMode: "battlegrounds", set: "bg32" },
+    { gameMode: "battlegrounds", set: "bg33" },
+    { gameMode: "battlegrounds", set: "bg34" },
+    { gameMode: "battlegrounds", set: "bg35" },
     { set: "battleground-trinket" },
-    { set: "bg-trinket" }
+    { set: "bg-trinket" },
+    ...trinketTypeIds.flatMap((id) => [
+      { gameMode: "battlegrounds", cardTypeId: id },
+      { cardTypeId: id }
+    ])
   ];
   const collected = new Map();
-  for (const params of queries) {
+  await Promise.all(queries.map(async (params) => {
     try {
       const pageCards = await fetchBlizzardPaged(blizzardLocale, params);
       for (const card of pageCards) {
@@ -313,7 +350,7 @@ async function loadFromBlizzard(locale) {
     } catch (error) {
       errors.push(`${JSON.stringify(params)}: ${error.message}`);
     }
-  }
+  }));
   if (!collected.size) {
     return { trinkets: [], totalScanned: 0, errors };
   }
