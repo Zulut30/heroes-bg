@@ -3,34 +3,54 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Конструктор стратегий — Конструктор БГ</title>
+  <title>Конструктор стратегий — Manacost Battleground</title>
   <meta name="description" content="Полотно стратегии 5×3: герои, существа, заклинания и аксессуары, быстрые слоты, аннотации стрелками и подписями, игровой фон, экспорт PNG/WebP.">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#dbc07a">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Конструктор БГ">
-  <meta property="og:title" content="Конструктор стратегий БГ">
+  <meta property="og:site_name" content="Manacost Battleground">
+  <meta property="og:title" content="Конструктор стратегий — Manacost Battleground">
   <meta property="og:description" content="Собирай полотно стратегии 5×3, добавляй стрелки и подписи, скачивай готовую картинку.">
   <meta property="og:image" content="./wallpaper.jpg">
   <meta property="og:locale" content="ru_RU">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Конструктор стратегий БГ">
+  <meta name="twitter:title" content="Конструктор стратегий — Manacost Battleground">
   <meta name="twitter:description" content="Собирай полотно стратегии и скачивай готовую картинку.">
   <meta name="twitter:image" content="./wallpaper.jpg">
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preload" as="font" type="font/otf" href="./font.otf" crossorigin>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body class="strategy-builder-page">
   <div class="page-shell page-shell-wide">
     <header class="site-header">
-      <a class="brand-mark" href="./index.html">Battlegrounds Hub</a>
+      <a class="brand-mark" href="./index.html">Manacost Battleground</a>
       <nav class="site-nav" aria-label="Основная навигация">
         <a class="nav-link" href="./index.html">Главная</a>
+        <div class="nav-dropdown" data-nav-dropdown>
+          <button class="nav-link nav-dropdown-toggle" type="button" aria-haspopup="true" aria-expanded="false">
+            Библиотека
+            <span class="nav-dropdown-caret" aria-hidden="true"></span>
+          </button>
+          <div class="nav-dropdown-menu">
+            <a class="nav-dropdown-item" href="./library.html">
+              <span class="nav-dropdown-item-title">Библиотека карт</span>
+              <span class="nav-dropdown-item-note">Все существа Полей сражений</span>
+            </a>
+            <a class="nav-dropdown-item" href="./blizzard-spells.html">
+              <span class="nav-dropdown-item-title">Заклинания</span>
+              <span class="nav-dropdown-item-note">Заклинания таверны по уровням</span>
+            </a>
+            <a class="nav-dropdown-item" href="./accessories.html">
+              <span class="nav-dropdown-item-title">Аксессуары</span>
+              <span class="nav-dropdown-item-note">Малые и большие аксессуары</span>
+            </a>
+          </div>
+        </div>
+        <a class="nav-link" href="./tier-list.html">Тир-лист героев</a>
         <a class="nav-link" href="./hero-tier-builder.html">Конструктор тир-листов</a>
-        <a class="nav-link" href="./library.html">Библиотека карт</a>
-        <a class="nav-link" href="./blizzard-spells.html">Заклинания</a>
-        <a class="nav-link" href="./accessories.html">Аксессуары</a>
         <a class="nav-link is-active" href="./strategy-builder.html">Конструктор стратегий</a>
       </nav>
     </header>
@@ -156,10 +176,10 @@
     </main>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
-  <script src="./shared.js"></script>
-  <script src="./tier-data.js"></script>
-  <script src="./accessories-data.js"></script>
-  <script src="./strategy-builder.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js" defer></script>
+  <script src="./shared.js" defer></script>
+  <script src="./tier-data.js" defer></script>
+  <script src="./accessories-data.js" defer></script>
+  <script src="./strategy-builder.js" defer></script>
 </body>
 </html>

@@ -2,13 +2,97 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="refresh" content="0; url=./hero-tier-builder.html">
-  <meta name="robots" content="noindex,nofollow">
-  <title>Переход · Конструктор БГ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Тир-лист героев — Manacost Battleground</title>
+  <meta name="description" content="Актуальный тир-лист героев Hearthstone Battlegrounds по статистике HSReplay: среднее место каждого героя, галерея по тирам S/A/B/C/D и скачивание каждого тира на игровом или прозрачном фоне.">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#dbc07a">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Manacost Battleground">
+  <meta property="og:title" content="Тир-лист героев — Manacost Battleground">
+  <meta property="og:description" content="Герои Полей сражений по тирам со средним местом из живой статистики.">
+  <meta property="og:image" content="./wallpaper.jpg">
+  <meta property="og:locale" content="ru_RU">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Тир-лист героев — Manacost Battleground">
+  <meta name="twitter:description" content="Герои Полей сражений по тирам со средним местом из живой статистики.">
+  <meta name="twitter:image" content="./wallpaper.jpg">
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="preload" as="font" type="font/otf" href="./font.otf" crossorigin>
+  <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <p>Перенаправление на <a href="./hero-tier-builder.html">конструктор тир-листов</a>…</p>
-  <script>location.replace("./hero-tier-builder.html");</script>
+  <div class="page-shell page-shell-wide">
+    <header class="site-header">
+      <a class="brand-mark" href="./index.html">Manacost Battleground</a>
+      <nav class="site-nav" aria-label="Основная навигация">
+        <a class="nav-link" href="./index.html">Главная</a>
+        <div class="nav-dropdown" data-nav-dropdown>
+          <button class="nav-link nav-dropdown-toggle" type="button" aria-haspopup="true" aria-expanded="false">
+            Библиотека
+            <span class="nav-dropdown-caret" aria-hidden="true"></span>
+          </button>
+          <div class="nav-dropdown-menu">
+            <a class="nav-dropdown-item" href="./library.html">
+              <span class="nav-dropdown-item-title">Библиотека карт</span>
+              <span class="nav-dropdown-item-note">Все существа Полей сражений</span>
+            </a>
+            <a class="nav-dropdown-item" href="./blizzard-spells.html">
+              <span class="nav-dropdown-item-title">Заклинания</span>
+              <span class="nav-dropdown-item-note">Заклинания таверны по уровням</span>
+            </a>
+            <a class="nav-dropdown-item" href="./accessories.html">
+              <span class="nav-dropdown-item-title">Аксессуары</span>
+              <span class="nav-dropdown-item-note">Малые и большие аксессуары</span>
+            </a>
+          </div>
+        </div>
+        <a class="nav-link is-active" href="./tier-list.html">Тир-лист героев</a>
+        <a class="nav-link" href="./hero-tier-builder.html">Конструктор тир-листов</a>
+        <a class="nav-link" href="./strategy-builder.html">Конструктор стратегий</a>
+      </nav>
+    </header>
+
+    <main class="hero-tiers-main">
+      <section class="hero-tiers-intro">
+        <div>
+          <p class="eyebrow">Живая статистика</p>
+          <h1 class="panel-title">Тир-лист героев</h1>
+          <p id="hero-tiers-status" class="library-status">Загружаю статистику героев...</p>
+        </div>
+        <div class="board-toolbar hero-tiers-toolbar">
+          <button id="hero-tiers-download-all-png" class="download-button" type="button">Скачать всё PNG</button>
+          <button id="hero-tiers-download-all-webp" class="secondary-button" type="button">Скачать всё WebP</button>
+          <div id="hero-tiers-background-picker" class="background-picker" aria-label="Фон для скачивания"></div>
+        </div>
+      </section>
+
+      <section id="hero-tiers" class="tiers" aria-live="polite"></section>
+    </main>
+  </div>
+
+  <template id="hero-tier-template">
+    <section class="tier-section hero-tier-section">
+      <div class="tier-header">
+        <div class="tier-meta">
+          <span class="tier-badge"></span>
+          <div>
+            <h2 class="tier-title"></h2>
+            <p class="tier-summary"></p>
+          </div>
+        </div>
+        <div class="tier-builder-row-actions">
+          <button class="secondary-button" type="button" data-export="png">PNG</button>
+          <button class="secondary-button" type="button" data-export="webp">WebP</button>
+        </div>
+      </div>
+      <div class="hero-tier-gallery"></div>
+    </section>
+  </template>
+
+  <script src="./shared.js" defer></script>
+  <script src="./hero-tiers-data.js" defer></script>
+  <script src="./tier-list.js" defer></script>
 </body>
 </html>

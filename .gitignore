@@ -3,3 +3,4 @@ bg_hero_tierlist_extracted.zip
 xlsx_unpacked/
 .env
 .env.local
+.DS_Store

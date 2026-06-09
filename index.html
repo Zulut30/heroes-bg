@@ -3,36 +3,54 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Конструктор БГ — стратегии, тир-листы и библиотека Hearthstone Battlegrounds</title>
-  <meta name="description" content="Собирай стратегии и тир-листы Hearthstone Battlegrounds: фильтры по героям, существам и заклинаниям, аннотации стрелками и подписями, экспорт в PNG или WebP.">
+  <title>Manacost Battleground — стратегии, тир-листы и библиотека Hearthstone Battlegrounds</title>
+  <meta name="description" content="Manacost Battleground: собирай стратегии и тир-листы Hearthstone Battlegrounds — фильтры по героям, существам и заклинаниям, аннотации стрелками и подписями, экспорт в PNG или WebP.">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#dbc07a">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Конструктор БГ">
-  <meta property="og:title" content="Конструктор БГ">
+  <meta property="og:site_name" content="Manacost Battleground">
+  <meta property="og:title" content="Manacost Battleground">
   <meta property="og:description" content="Стратегии, тир-листы и библиотека Hearthstone Battlegrounds в одном месте.">
   <meta property="og:image" content="./wallpaper.jpg">
   <meta property="og:locale" content="ru_RU">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Конструктор БГ">
+  <meta name="twitter:title" content="Manacost Battleground">
   <meta name="twitter:description" content="Стратегии, тир-листы и библиотека Hearthstone Battlegrounds.">
   <meta name="twitter:image" content="./wallpaper.jpg">
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="preload" as="image" href="./wallpaper.jpg" fetchpriority="high">
+  <link rel="preload" as="image" type="image/webp" href="./wallpaper.webp" fetchpriority="high">
   <link rel="preload" as="font" type="font/otf" href="./font.otf" crossorigin>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body class="landing-page">
   <div class="page-shell page-shell-wide">
     <header class="site-header">
-      <a class="brand-mark" href="./index.html">Battlegrounds Hub</a>
+      <a class="brand-mark" href="./index.html">Manacost Battleground</a>
       <nav class="site-nav" aria-label="Основная навигация">
         <a class="nav-link is-active" href="./index.html">Главная</a>
+        <div class="nav-dropdown" data-nav-dropdown>
+          <button class="nav-link nav-dropdown-toggle" type="button" aria-haspopup="true" aria-expanded="false">
+            Библиотека
+            <span class="nav-dropdown-caret" aria-hidden="true"></span>
+          </button>
+          <div class="nav-dropdown-menu">
+            <a class="nav-dropdown-item" href="./library.html">
+              <span class="nav-dropdown-item-title">Библиотека карт</span>
+              <span class="nav-dropdown-item-note">Все существа Полей сражений</span>
+            </a>
+            <a class="nav-dropdown-item" href="./blizzard-spells.html">
+              <span class="nav-dropdown-item-title">Заклинания</span>
+              <span class="nav-dropdown-item-note">Заклинания таверны по уровням</span>
+            </a>
+            <a class="nav-dropdown-item" href="./accessories.html">
+              <span class="nav-dropdown-item-title">Аксессуары</span>
+              <span class="nav-dropdown-item-note">Малые и большие аксессуары</span>
+            </a>
+          </div>
+        </div>
+        <a class="nav-link" href="./tier-list.html">Тир-лист героев</a>
         <a class="nav-link" href="./hero-tier-builder.html">Конструктор тир-листов</a>
-        <a class="nav-link" href="./library.html">Библиотека карт</a>
-        <a class="nav-link" href="./blizzard-spells.html">Заклинания</a>
-        <a class="nav-link" href="./accessories.html">Аксессуары</a>
         <a class="nav-link" href="./strategy-builder.html">Конструктор стратегий</a>
       </nav>
     </header>
@@ -41,7 +59,7 @@
       <section class="landing-hero">
         <div class="landing-hero-copy">
           <span class="landing-badge">Hearthstone · Battlegrounds</span>
-          <h1 class="landing-title">Конструктор БГ</h1>
+          <h1 class="landing-title">Manacost Battleground</h1>
           <p class="landing-lead">
             Всё для подготовки стратегий Полей сражений в одном месте — фильтруй героев, заклинания, существ и аксессуары,
             собирай тир-листы и полотна стратегий, добавляй стрелки и подписи, скачивай готовую картинку в PNG или WebP.
@@ -52,6 +70,7 @@
               <span class="landing-cta-arrow" aria-hidden="true">→</span>
             </a>
             <a class="landing-cta-secondary" href="./hero-tier-builder.html">Открыть тир-листы</a>
+            <a class="landing-cta-secondary" href="./library.html">Библиотека</a>
           </div>
 
           <ul class="landing-stats" aria-label="Библиотека карт">
@@ -79,19 +98,19 @@
           <div class="landing-glow landing-glow-b"></div>
           <div class="landing-card-stack">
             <span class="landing-card landing-card-1" data-race="DRAGON">
-              <img src="/api/card-art?id=BGS_041&amp;locale=ruRU&amp;size=256x" alt="" loading="eager" decoding="async" fetchpriority="low">
+              <img src="/api/card-art?id=BGS_041&amp;locale=ruRU&amp;size=256x" alt="" loading="lazy" decoding="async" fetchpriority="low">
             </span>
             <span class="landing-card landing-card-2" data-race="DEMON">
-              <img src="/api/card-art?id=BG26_523&amp;locale=ruRU&amp;size=256x" alt="" loading="eager" decoding="async" fetchpriority="low">
+              <img src="/api/card-art?id=BG26_523&amp;locale=ruRU&amp;size=256x" alt="" loading="lazy" decoding="async" fetchpriority="low">
             </span>
             <span class="landing-card landing-card-3" data-race="BEAST">
-              <img src="/api/card-art?id=BG29_808&amp;locale=ruRU&amp;size=256x" alt="" loading="eager" decoding="async" fetchpriority="low">
+              <img src="/api/card-art?id=BG29_808&amp;locale=ruRU&amp;size=256x" alt="" loading="lazy" decoding="async" fetchpriority="low">
             </span>
             <span class="landing-card landing-card-4" data-race="MECHANICAL">
-              <img src="/api/card-art?id=BG33_371&amp;locale=ruRU&amp;size=256x" alt="" loading="eager" decoding="async" fetchpriority="low">
+              <img src="/api/card-art?id=BG33_371&amp;locale=ruRU&amp;size=256x" alt="" loading="lazy" decoding="async" fetchpriority="low">
             </span>
             <span class="landing-card landing-card-5" data-race="UNDEAD">
-              <img src="/api/card-art?id=BG31_835&amp;locale=ruRU&amp;size=256x" alt="" loading="eager" decoding="async" fetchpriority="low">
+              <img src="/api/card-art?id=BG31_835&amp;locale=ruRU&amp;size=256x" alt="" loading="lazy" decoding="async" fetchpriority="low">
             </span>
           </div>
         </div>
@@ -112,6 +131,13 @@
             <h3>Конструктор тир-листов</h3>
             <p>Drag-and-drop распределение героев и карт по тирам S/A/B/C/D, сменный игровой фон, экспорт одного тира или сразу всех.</p>
             <span class="landing-feature-cta">Собрать тир-лист →</span>
+          </a>
+
+          <a class="landing-feature landing-feature-herotiers" href="./tier-list.html">
+            <span class="landing-feature-kicker">Live Stats</span>
+            <h3>Тир-лист героев</h3>
+            <p>Актуальный тир-лист героев по живой статистике HSReplay: среднее место каждого героя и скачивание тиров на игровом фоне.</p>
+            <span class="landing-feature-cta">Смотреть тир-лист →</span>
           </a>
 
           <a class="landing-feature landing-feature-library" href="./library.html">
@@ -163,6 +189,28 @@
         </div>
       </section>
     </main>
+
+    <footer class="site-footer">
+      <div class="site-footer-inner">
+        <div>
+          <span class="site-footer-brand">Manacost Battleground</span>
+          <p class="site-footer-note">
+            Неофициальный фан-проект по Hearthstone Battlegrounds. Hearthstone® — товарный знак Blizzard Entertainment, Inc.
+            Изображения карт принадлежат Blizzard Entertainment.
+          </p>
+        </div>
+        <nav class="site-footer-nav" aria-label="Карта сайта">
+          <a class="nav-link" href="./library.html">Библиотека карт</a>
+          <a class="nav-link" href="./blizzard-spells.html">Заклинания</a>
+          <a class="nav-link" href="./accessories.html">Аксессуары</a>
+          <a class="nav-link" href="./tier-list.html">Тир-лист героев</a>
+          <a class="nav-link" href="./hero-tier-builder.html">Тир-листы</a>
+          <a class="nav-link" href="./strategy-builder.html">Стратегии</a>
+        </nav>
+      </div>
+    </footer>
   </div>
+
+  <script src="./shared.js" defer></script>
 </body>
 </html>

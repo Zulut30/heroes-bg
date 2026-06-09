@@ -355,11 +355,59 @@
     return String(value == null ? "" : value).replace(/[&<>"']/g, (ch) => HTML_ESCAPE_MAP[ch]);
   }
 
+  function initSiteNav() {
+    document.querySelectorAll("[data-nav-dropdown]").forEach((dropdown) => {
+      const toggle = dropdown.querySelector(".nav-dropdown-toggle");
+      if (!toggle) {
+        return;
+      }
+
+      const close = () => {
+        dropdown.classList.remove("is-open");
+        toggle.setAttribute("aria-expanded", "false");
+      };
+
+      toggle.addEventListener("click", () => {
+        const isOpen = dropdown.classList.toggle("is-open");
+        toggle.setAttribute("aria-expanded", String(isOpen));
+      });
+
+      document.addEventListener("click", (event) => {
+        if (event.target instanceof Node && !dropdown.contains(event.target)) {
+          close();
+        }
+      });
+
+      dropdown.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          close();
+          toggle.focus();
+        }
+      });
+    });
+
+    document.querySelectorAll("[data-section-nav]").forEach((select) => {
+      select.addEventListener("change", () => {
+        if (select.value && select.value !== "current") {
+          window.location.href = select.value;
+        }
+      });
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initSiteNav);
+  } else {
+    initSiteNav();
+  }
+
   window.Shared = {
     MAX_DOWNLOAD_SIZE_MB,
     loadImage,
     loadImageFromSource,
+    roundedRect,
     debounce,
+    loadJson,
     loadBattlegroundsLibrary,
     exportCardSheet,
     escapeHtml

@@ -28,10 +28,10 @@
   const BACKGROUND_STORAGE_KEY = "hero-tier-builder-background-mode-v1";
   const BACKGROUND_OPTIONS = [
     { value: "transparent", label: "Без фона", url: null },
-    { value: "wallpaper", label: "Фон 1", url: "./wallpaper.jpg" },
-    { value: "wallpaper1", label: "Фон 2", url: "./wallpaper1.jpg" },
-    { value: "wallpaper2", label: "Фон 3", url: "./wallpaper2.jpg" },
-    { value: "wallpaper3", label: "Фон 4", url: "./wallpaper3.jpg" }
+    { value: "wallpaper", label: "Фон 1", url: "./wallpaper.webp" },
+    { value: "wallpaper1", label: "Фон 2", url: "./wallpaper1.webp" },
+    { value: "wallpaper2", label: "Фон 3", url: "./wallpaper2.webp" },
+    { value: "wallpaper3", label: "Фон 4", url: "./wallpaper3.webp" }
   ];
   const BACKGROUND_VALUES = new Set(BACKGROUND_OPTIONS.map((option) => option.value));
   const wallpaperImageCache = new Map();

@@ -1,7 +1,7 @@
 {
-  "name": "Конструктор БГ",
-  "short_name": "БГ",
-  "description": "Конструктор стратегий и тир-листов Hearthstone Battlegrounds: фильтры, аннотации, экспорт PNG/WebP.",
+  "name": "Manacost Battleground",
+  "short_name": "Manacost",
+  "description": "Manacost Battleground — конструктор стратегий и тир-листов Hearthstone Battlegrounds: фильтры, аннотации, экспорт PNG/WebP.",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#040810",
