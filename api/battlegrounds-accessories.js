@@ -1,3 +1,6 @@
+const fs = require("fs");
+const path = require("path");
+const vm = require("vm");
 const { fetchBlizzardJson, rateLimit } = require("./_blizzard");
 
 // Audit summary of why we kept landing on 70 accessories:
@@ -27,6 +30,7 @@ const FETCH_TIMEOUT_MS = 4000;
 const SOURCE_TIMEOUT_MS = 7000;
 const PAGE_LIMIT = 4;
 const CACHE_TTL_MS = 60 * 60 * 1000;
+const MAX_PLAUSIBLE_ACCESSORY_COUNT = 140;
 const cache = { payload: null, expiresAt: 0, locale: null };
 let inFlight = null;
 
@@ -60,7 +64,7 @@ function buildArtProxyUrl(id, locale) {
 }
 
 function stripHtml(value) {
-  return String(value || "")
+  return stringifyField(value)
     .replace(/<[^>]+>/g, " ")
     .replace(/\$\d+/g, "")
     .replace(/\[x]/g, "")
@@ -68,7 +72,27 @@ function stripHtml(value) {
     .trim();
 }
 
+function stringifyField(value) {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map(stringifyField).find(Boolean) || "";
+  }
+  if (typeof value === "object") {
+    const preferred = value.ru_RU || value.ruRU || value.en_US || value.enUS || value.name || value.text || value.title;
+    if (preferred) return stringifyField(preferred);
+    return Object.values(value).map(stringifyField).find(Boolean) || "";
+  }
+  return "";
+}
+
 function detectSize(card) {
+  const school = String(card.spellSchool?.slug || card.spellSchool?.name || card.spellSchool || card.spellSchoolId || "").toUpperCase();
+  if (school.includes("GREATER") || school === "12") return "LARGE";
+  if (school.includes("LESSER") || school === "11") return "SMALL";
+
   const mechanics = (card.mechanics || []).map((m) => String(m && (m.name || m.slug || m)).toUpperCase());
   if (mechanics.some((m) => m.includes("BATTLEGROUND_TRINKET_LARGE"))) return "LARGE";
   if (mechanics.some((m) => m.includes("BATTLEGROUND_TRINKET_SMALL"))) return "SMALL";
@@ -94,7 +118,7 @@ function isTrinketCard(card) {
   if (card.battlegrounds && card.battlegrounds.trinket) return true;
   const slug = String(card.cardType?.slug || card.type?.slug || card.typeSlug || card.type || "").toLowerCase();
   if (slug.includes("trinket")) return true;
-  if ([43, 44, 45, 47].includes(Number(card.cardTypeId))) return true;
+  if (Number(card.cardTypeId) === 44) return true;
   const mechanics = (card.mechanics || []).map((m) => String(m && (m.slug || m.name || m)).toUpperCase());
   if (mechanics.some((m) => m.includes("TRINKET"))) return true;
   const setSlug = String(card.cardSet?.slug || card.set?.slug || card.set || "").toLowerCase();
@@ -129,15 +153,16 @@ function pickImageUrl(card) {
 
 function normalizeCard(card, locale, sourceTag) {
   const id = String(card.id ?? card.cardId ?? card.dbfId ?? card.slug ?? "");
+  const name = stringifyField(card.name || card.title);
   const upstreamImage = pickImageUrl(card);
   const proxiedImage = upstreamImage ? buildRemoteImageProxyUrl(upstreamImage) : "";
   const fallbackImage = buildArtProxyUrl(id, locale);
   return {
     id: `${sourceTag.slice(0,2)}-${id}`,
     cardId: id,
-    dedupeKey: `${id}|${(card.name || "").toLowerCase()}`,
+    dedupeKey: `${id}|${name.toLowerCase()}`,
     source: sourceTag,
-    name: card.name || card.title || "",
+    name,
     text: stripHtml(card.text || card.flavorText || ""),
     size: detectSize(card),
     image: proxiedImage || fallbackImage,
@@ -146,6 +171,63 @@ function normalizeCard(card, locale, sourceTag) {
     cost: card.manaCost ?? card.cost ?? null,
     rarity: card.rarity || null,
     set: card.cardSet?.slug || card.set?.slug || card.cardSetId || null
+  };
+}
+
+let cachedLocalAccessories = null;
+function loadLocalAccessories() {
+  if (cachedLocalAccessories) {
+    return cachedLocalAccessories;
+  }
+
+  const filePath = path.resolve(__dirname, "..", "accessories-data.js");
+  const sandbox = { window: {} };
+  const code = fs.readFileSync(filePath, "utf8");
+  vm.runInNewContext(code, sandbox, { filename: filePath });
+  const payload = sandbox.window.accessoriesData || {};
+  const normalizeLocal = (card, size) => ({
+    id: card.id,
+    cardId: card.id,
+    dedupeKey: `${card.id}|${String(card.name || "").toLowerCase()}`,
+    source: "Local",
+    name: card.name || "",
+    text: "",
+    size,
+    image: card.image || "",
+    imageFallback: "",
+    upstreamImage: "",
+    cost: null,
+    rarity: null,
+    set: "local-current-accessories"
+  });
+
+  cachedLocalAccessories = {
+    small: (payload.small || []).map((card) => normalizeLocal(card, "SMALL")),
+    large: (payload.large || []).map((card) => normalizeLocal(card, "LARGE"))
+  };
+  cachedLocalAccessories.accessories = [...cachedLocalAccessories.small, ...cachedLocalAccessories.large];
+  return cachedLocalAccessories;
+}
+
+function buildLocalPayload(locale, sourceReason, sources = {}) {
+  const local = loadLocalAccessories();
+  return {
+    source: sourceReason || "Local curated accessories",
+    locale,
+    total: local.accessories.length,
+    small: local.small,
+    large: local.large,
+    accessories: local.accessories,
+    fetchedAt: new Date().toISOString(),
+    sources: {
+      ...sources,
+      local: {
+        count: local.accessories.length,
+        scanned: local.accessories.length,
+        source: "accessories-data.js",
+        errors: []
+      }
+    }
   };
 }
 
@@ -386,6 +468,31 @@ async function loadAccessories(locale, force = false) {
       withTimeout("Blizzard", loadFromBlizzardDev(locale).catch((error) => ({ trinkets: [], totalScanned: 0, errors: [`Blizzard: ${error.message}`] })), SOURCE_TIMEOUT_MS)
     ]);
     const merged = mergeTrinkets(hswebInternal.trinkets, hsdbHtml.trinkets, blizzardDev.trinkets);
+    const dynamicSources = {
+      hswebInternal: { count: hswebInternal.trinkets.length, scanned: hswebInternal.totalScanned, source: hswebInternal.source, errors: hswebInternal.errors || [] },
+      hsdbHtml: { count: hsdbHtml.trinkets.length, scanned: hsdbHtml.totalScanned, source: hsdbHtml.source, errors: hsdbHtml.errors || [] },
+      blizzard: { count: blizzardDev.trinkets.length, scanned: blizzardDev.totalScanned, errors: blizzardDev.errors || [] }
+    };
+
+    if (!merged.length) {
+      return buildLocalPayload(locale, "Local curated accessories (upstream unavailable)", dynamicSources);
+    }
+
+    // Blizzard and the public web endpoints can return the full historical
+    // trinket archive. That makes the page look mixed with unrelated / removed
+    // cards, so keep the curated current rotation unless upstream is plausible.
+    if (merged.length > MAX_PLAUSIBLE_ACCESSORY_COUNT) {
+      return buildLocalPayload(locale, "Local curated accessories (upstream returned legacy archive)", {
+        ...dynamicSources,
+        rejectedUpstream: {
+          count: merged.length,
+          scanned: merged.length,
+          source: "dynamic accessories sources",
+          errors: [`Rejected ${merged.length} cards; expected current accessory pool, not historical archive.`]
+        }
+      });
+    }
+
     merged.sort((a, b) => {
       if (a.size !== b.size) return a.size === "SMALL" ? -1 : 1;
       return safeLocaleCompare(a.name, b.name, locale);
@@ -404,9 +511,7 @@ async function loadAccessories(locale, force = false) {
       accessories: merged,
       fetchedAt: new Date().toISOString(),
       sources: {
-        hswebInternal: { count: hswebInternal.trinkets.length, scanned: hswebInternal.totalScanned, source: hswebInternal.source, errors: hswebInternal.errors || [] },
-        hsdbHtml: { count: hsdbHtml.trinkets.length, scanned: hsdbHtml.totalScanned, source: hsdbHtml.source, errors: hsdbHtml.errors || [] },
-        blizzard: { count: blizzardDev.trinkets.length, scanned: blizzardDev.totalScanned, errors: blizzardDev.errors || [] }
+        ...dynamicSources
       }
     };
   })()
