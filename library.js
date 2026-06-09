@@ -418,8 +418,7 @@
 
     try {
       setStatus("Загружаю библиотеку карт...");
-      const response = await fetch("./bgs-library.json", { cache: "force-cache" });
-      const payload = await response.json();
+      const payload = await window.Shared.loadBattlegroundsLibrary({ locale: "ruRU" });
       state.cards = Array.isArray(payload.cards) ? payload.cards : [];
       applyFilters();
       renderResults();

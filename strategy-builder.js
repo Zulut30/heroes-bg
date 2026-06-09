@@ -1754,31 +1754,29 @@ function normalizeHeroCard(hero, tier) {
     ));
   }
 
+  async function loadOptionalJson(url, label) {
+    try {
+      const response = await fetch(url, {
+        headers: { Accept: "application/json" }
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.warn(`Не удалось загрузить ${label}.`, error);
+      return { cards: [] };
+    }
+  }
+
   async function bootstrap() {
     try {
-      const [libraryResponse, spellsResponse, englishNamesResponse] = await Promise.all([
-        fetch("./bgs-library.json", { cache: "force-cache" }),
-        fetch("./api/battlegrounds-spells?locale=ru_RU&pageSize=200", {
-          headers: { Accept: "application/json" }
-        }),
-        fetch("./api/battlegrounds-card-names?locale=en_US", {
-          headers: { Accept: "application/json" }
-        })
+      const [libraryPayload, spellsPayload, englishNamesPayload] = await Promise.all([
+        window.Shared.loadBattlegroundsLibrary({ locale: "ruRU", includeEnglish: true }),
+        loadOptionalJson("./api/battlegrounds-spells?locale=ru_RU&pageSize=200", "заклинания"),
+        loadOptionalJson("./api/battlegrounds-card-names?locale=en_US", "английские названия")
       ]);
 
-      if (!libraryResponse.ok) {
-        throw new Error(`Library HTTP ${libraryResponse.status}`);
-      }
-      if (!spellsResponse.ok) {
-        throw new Error(`Spells HTTP ${spellsResponse.status}`);
-      }
-      if (!englishNamesResponse.ok) {
-        throw new Error(`English names HTTP ${englishNamesResponse.status}`);
-      }
-
-      const libraryPayload = await libraryResponse.json();
-      const spellsPayload = await spellsResponse.json();
-      const englishNamesPayload = await englishNamesResponse.json();
       const englishCards = englishNamesPayload.cards || [];
       const englishByKey = new Map();
       englishCards.forEach((card) => {
@@ -1801,7 +1799,7 @@ function normalizeHeroCard(hero, tier) {
           const english = resolveEnglish(card);
           return normalizeMinionCard({
             ...card,
-            englishName: english?.name || "",
+            englishName: english?.name || card.englishName || "",
             slug: english?.slug || ""
           });
         })

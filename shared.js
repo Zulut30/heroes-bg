@@ -174,6 +174,33 @@
     };
   }
 
+  async function loadJson(url, options = {}) {
+    const response = await fetch(url, options);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    return response.json();
+  }
+
+  async function loadBattlegroundsLibrary(options = {}) {
+    const locale = options.locale || "ruRU";
+    const includeEnglish = options.includeEnglish ? "&includeEnglish=1" : "";
+    const apiUrl = `./api/battlegrounds-library?locale=${encodeURIComponent(locale)}${includeEnglish}`;
+
+    try {
+      const payload = await loadJson(apiUrl, {
+        headers: { Accept: "application/json" }
+      });
+      if (Array.isArray(payload.cards) && payload.cards.length) {
+        return payload;
+      }
+    } catch (error) {
+      console.warn("Не удалось загрузить свежую библиотеку HearthstoneJSON, использую локальный файл.", error);
+    }
+
+    return loadJson(options.fallbackUrl || "./bgs-library.json", { cache: "force-cache" });
+  }
+
   async function exportCardSheet(items, options = {}) {
     const cards = Array.isArray(items) ? items.filter(Boolean) : [];
     if (!cards.length) {
@@ -333,6 +360,7 @@
     loadImage,
     loadImageFromSource,
     debounce,
+    loadBattlegroundsLibrary,
     exportCardSheet,
     escapeHtml
   };
