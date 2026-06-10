@@ -74,7 +74,7 @@ window.heroTierStatic = {
     "126532": "./heroes_bg/Mister Clocksworth.png",
     "68129": "./heroes_bg/Guff Runetotem.png",
     "82110": "./heroes_bg/Onyxia.png",
-    "63602": "/api/card-art?id=TB_BaconShop_HERO_72&locale=ruRU&size=512x",
+    "63602": "./heroes_bg/Lord Barov.png",
     "101345": "./heroes_bg/E.T.C., Band Manager.png",
     "122925": "./heroes_bg/Loh, the Living Legend.png",
     "86291": "./heroes_bg/Heistbaron Togwaggle.png",

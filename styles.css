@@ -2593,9 +2593,20 @@ textarea:focus-visible,
 
 .hero-tier-gallery {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 16px;
   margin-top: 20px;
+}
+
+.tier-background-picker .background-chip {
+  width: 28px;
+  height: 28px;
+  font-size: 0.95rem;
+}
+
+.tier-builder-row-actions {
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .hero-tile {
@@ -2671,6 +2682,6 @@ textarea:focus-visible,
   }
 
   .hero-tier-gallery {
-    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

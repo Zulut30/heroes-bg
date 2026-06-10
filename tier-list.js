@@ -18,6 +18,7 @@
   };
 
   const BACKGROUND_STORAGE_KEY = "hero-tiers-background-mode-v1";
+  const TIER_BACKGROUND_STORAGE_KEY = "hero-tiers-tier-backgrounds-v1";
   const BACKGROUND_OPTIONS = [
     { value: "transparent", label: "Без фона", url: null },
     { value: "wallpaper", label: "Фон 1", url: "./wallpaper.webp" },
@@ -40,7 +41,8 @@
 
   const state = {
     sections: [],
-    backgroundMode: loadBackgroundMode()
+    backgroundMode: loadBackgroundMode(),
+    tierBackgrounds: loadTierBackgrounds()
   };
 
   function loadBackgroundMode() {
@@ -50,6 +52,34 @@
     } catch (error) {
       return "transparent";
     }
+  }
+
+  function loadTierBackgrounds() {
+    try {
+      const raw = JSON.parse(window.localStorage.getItem(TIER_BACKGROUND_STORAGE_KEY) || "{}");
+      const result = {};
+      Object.entries(raw || {}).forEach(([tier, mode]) => {
+        if (BACKGROUND_VALUES.has(mode)) {
+          result[tier] = mode;
+        }
+      });
+      return result;
+    } catch (error) {
+      return {};
+    }
+  }
+
+  function persistBackgrounds() {
+    try {
+      window.localStorage.setItem(BACKGROUND_STORAGE_KEY, state.backgroundMode);
+      window.localStorage.setItem(TIER_BACKGROUND_STORAGE_KEY, JSON.stringify(state.tierBackgrounds));
+    } catch (error) {
+      console.warn("Не удалось сохранить режим фона.", error);
+    }
+  }
+
+  function getTierBackgroundMode(tier) {
+    return state.tierBackgrounds[tier] ?? state.backgroundMode;
   }
 
   function getBackgroundUrl(mode) {
@@ -178,17 +208,30 @@
 
   function renderTiers() {
     tiersRoot.replaceChildren();
+    tierPickerUpdaters.length = 0;
     state.sections.forEach((section) => {
       const fragment = template.content.cloneNode(true);
       const badge = fragment.querySelector(".tier-badge");
       const title = fragment.querySelector(".tier-title");
       const summary = fragment.querySelector(".tier-summary");
       const gallery = fragment.querySelector(".hero-tier-gallery");
+      const tierPickerEl = fragment.querySelector(".tier-background-picker");
 
       badge.textContent = section.tier;
       badge.style.background = `linear-gradient(135deg, ${tierColors[section.tier] || "#f2db9b"}, #b89e61)`;
       title.textContent = tierTitles[section.tier] ? `${section.tier} · ${tierTitles[section.tier]}` : `${section.tier}-тир`;
       summary.textContent = formatHeroCount(section.heroes.length);
+
+      const tierPickerUpdate = buildBackgroundPicker(
+        tierPickerEl,
+        () => getTierBackgroundMode(section.tier),
+        (mode) => {
+          state.tierBackgrounds[section.tier] = mode;
+        }
+      );
+      if (tierPickerUpdate) {
+        tierPickerUpdaters.push(tierPickerUpdate);
+      }
 
       section.heroes.forEach((hero) => gallery.append(renderHeroTile(hero)));
 
@@ -224,7 +267,7 @@
   // --- Экспорт: та же логика фона, что и в конструкторе стратегий ---
 
   const EXPORT_CARD_WIDTH = 256;
-  const EXPORT_COLUMNS_MAX = 8;
+  const EXPORT_COLUMNS_MAX = 6;
   const EXPORT_SIDE_PADDING = 48;
   const EXPORT_TOP_PADDING = 36;
   const EXPORT_BOTTOM_PADDING = 36;
@@ -233,8 +276,8 @@
   const EXPORT_PLACE_HEIGHT = 56;
   const EXPORT_PLACE_GAP = 10;
 
-  async function drawWallpaperBackground(ctx, width, height) {
-    const url = getBackgroundUrl(state.backgroundMode);
+  async function drawWallpaperBackground(ctx, rect, mode) {
+    const url = getBackgroundUrl(mode);
     if (!url) return;
     try {
       let wallpaper = wallpaperImageCache.get(url);
@@ -244,8 +287,8 @@
       }
       const blur = 14;
       const bleed = blur * 4;
-      const targetW = width + bleed * 2;
-      const targetH = height + bleed * 2;
+      const targetW = rect.width + bleed * 2;
+      const targetH = rect.height + bleed * 2;
       const wallpaperRatio = wallpaper.width / wallpaper.height;
       const targetRatio = targetW / targetH;
       let drawW;
@@ -257,14 +300,17 @@
         drawW = targetW;
         drawH = drawW / wallpaperRatio;
       }
-      const drawX = -bleed + (targetW - drawW) / 2;
-      const drawY = -bleed + (targetH - drawH) / 2;
+      const drawX = rect.x - bleed + (targetW - drawW) / 2;
+      const drawY = rect.y - bleed + (targetH - drawH) / 2;
       ctx.save();
+      ctx.beginPath();
+      ctx.rect(rect.x, rect.y, rect.width, rect.height);
+      ctx.clip();
       ctx.filter = `blur(${blur}px) brightness(0.45)`;
       ctx.drawImage(wallpaper, drawX, drawY, drawW, drawH);
       ctx.restore();
       ctx.fillStyle = "rgba(4, 8, 16, 0.35)";
-      ctx.fillRect(0, 0, width, height);
+      ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
     } catch (error) {
       console.warn("Не удалось отрисовать игровой фон:", error);
     }
@@ -395,8 +441,9 @@
     canvas.height = Math.ceil(EXPORT_TOP_PADDING + layout.contentHeight + EXPORT_BOTTOM_PADDING);
     const ctx = canvas.getContext("2d");
 
-    if (state.backgroundMode !== "transparent") {
-      await drawWallpaperBackground(ctx, canvas.width, canvas.height);
+    const mode = getTierBackgroundMode(section.tier);
+    if (mode !== "transparent") {
+      await drawWallpaperBackground(ctx, { x: 0, y: 0, width: canvas.width, height: canvas.height }, mode);
     }
 
     drawSectionRows(ctx, layout, EXPORT_TOP_PADDING);
@@ -435,8 +482,21 @@
     canvas.height = Math.ceil(totalHeight);
     const ctx = canvas.getContext("2d");
 
-    if (state.backgroundMode !== "transparent") {
-      await drawWallpaperBackground(ctx, canvas.width, canvas.height);
+    // Полоса каждого тира рисуется со своим фоном (границы — посередине зазора между тирами).
+    let bandTop = 0;
+    let measureY = EXPORT_TOP_PADDING;
+    for (let index = 0; index < layouts.length; index += 1) {
+      const { tier, layout } = layouts[index];
+      const sectionBottom = measureY + LABEL_HEIGHT + layout.contentHeight;
+      const bandBottom = index === layouts.length - 1
+        ? canvas.height
+        : sectionBottom + TIER_GAP / 2;
+      const mode = getTierBackgroundMode(tier);
+      if (mode !== "transparent") {
+        await drawWallpaperBackground(ctx, { x: 0, y: bandTop, width: canvas.width, height: bandBottom - bandTop }, mode);
+      }
+      bandTop = bandBottom;
+      measureY = sectionBottom + TIER_GAP;
     }
 
     let cursorY = EXPORT_TOP_PADDING;
@@ -454,43 +514,63 @@
     await exportCanvas(canvas, fileType, "hero-tier-list");
   }
 
-  // --- Переключатель фона (как в конструкторе стратегий) ---
+  // --- Переключатели фона (как в конструкторе стратегий) ---
+  // Глобальный пикер задаёт фон всем тирам сразу, пикер в шапке тира — только своему.
 
-  function renderBackgroundPicker() {
-    if (!backgroundPickerEl) return;
-    if (backgroundPickerEl.childElementCount === 0) {
-      BACKGROUND_OPTIONS.forEach((option) => {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "background-chip";
-        button.dataset.bg = option.value;
-        button.setAttribute("aria-label", option.label);
-        button.title = option.label;
-        if (option.url) {
-          button.style.backgroundImage = `url("${option.url}")`;
-        } else {
-          button.classList.add("is-transparent");
-          button.textContent = "∅";
-        }
-        button.addEventListener("click", () => {
-          state.backgroundMode = option.value;
-          try {
-            window.localStorage.setItem(BACKGROUND_STORAGE_KEY, state.backgroundMode);
-          } catch (error) {
-            console.warn("Не удалось сохранить режим фона.", error);
-          }
-          renderBackgroundPicker();
-        });
-        backgroundPickerEl.append(button);
+  const tierPickerUpdaters = [];
+
+  function buildBackgroundPicker(container, getMode, setMode) {
+    if (!container) return null;
+    container.replaceChildren();
+    BACKGROUND_OPTIONS.forEach((option) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "background-chip";
+      button.dataset.bg = option.value;
+      button.setAttribute("aria-label", option.label);
+      button.title = option.label;
+      if (option.url) {
+        button.style.backgroundImage = `url("${option.url}")`;
+      } else {
+        button.classList.add("is-transparent");
+        button.textContent = "∅";
+      }
+      button.addEventListener("click", () => {
+        setMode(option.value);
+        persistBackgrounds();
+        refreshBackgroundPickers();
       });
-    }
-    backgroundPickerEl.querySelectorAll(".background-chip").forEach((chip) => {
-      chip.classList.toggle("is-active", chip.dataset.bg === state.backgroundMode);
+      container.append(button);
     });
+    const update = () => {
+      container.querySelectorAll(".background-chip").forEach((chip) => {
+        chip.classList.toggle("is-active", chip.dataset.bg === getMode());
+      });
+    };
+    update();
+    return update;
+  }
+
+  let globalPickerUpdate = null;
+
+  function refreshBackgroundPickers() {
+    if (globalPickerUpdate) globalPickerUpdate();
+    tierPickerUpdaters.forEach((update) => update());
+  }
+
+  function renderGlobalBackgroundPicker() {
+    globalPickerUpdate = buildBackgroundPicker(
+      backgroundPickerEl,
+      () => state.backgroundMode,
+      (mode) => {
+        state.backgroundMode = mode;
+        state.tierBackgrounds = {};
+      }
+    );
   }
 
   async function bootstrap() {
-    renderBackgroundPicker();
+    renderGlobalBackgroundPicker();
     try {
       const result = await loadHeroStats();
       const heroes = result.heroes.map(normalizeHero);
