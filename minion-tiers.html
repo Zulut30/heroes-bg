@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Тир-лист существ — Manacost Battleground</title>
+  <meta name="description" content="Тир-лист существ Hearthstone Battlegrounds по статистике HSReplay: impact, винрейт боёв и популярность каждой карты, галерея по тирам S/A/B/C/D со скачиванием и подробная таблица.">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#dbc07a">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Manacost Battleground">
+  <meta property="og:title" content="Тир-лист существ — Manacost Battleground">
+  <meta property="og:description" content="Существа Полей сражений по тирам с живой статистикой HSReplay.">
+  <meta property="og:image" content="./wallpaper.jpg">
+  <meta property="og:locale" content="ru_RU">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Тир-лист существ — Manacost Battleground">
+  <meta name="twitter:description" content="Существа Полей сражений по тирам с живой статистикой HSReplay.">
+  <meta name="twitter:image" content="./wallpaper.jpg">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="preload" as="font" type="font/otf" href="./font.otf" crossorigin>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="page-shell page-shell-wide">
+    <header class="site-header">
+      <a class="brand-mark" href="./index.html">Manacost Battleground</a>
+      <nav class="site-nav" aria-label="Основная навигация">
+        <a class="nav-link" href="./index.html">Главная</a>
+        <div class="nav-dropdown" data-nav-dropdown>
+          <button class="nav-link nav-dropdown-toggle" type="button" aria-haspopup="true" aria-expanded="false">
+            Библиотека
+            <span class="nav-dropdown-caret" aria-hidden="true"></span>
+          </button>
+          <div class="nav-dropdown-menu">
+            <a class="nav-dropdown-item" href="./library.html">
+              <span class="nav-dropdown-item-title">Библиотека карт</span>
+              <span class="nav-dropdown-item-note">Все существа Полей сражений</span>
+            </a>
+            <a class="nav-dropdown-item" href="./blizzard-spells.html">
+              <span class="nav-dropdown-item-title">Заклинания</span>
+              <span class="nav-dropdown-item-note">Заклинания таверны по уровням</span>
+            </a>
+            <a class="nav-dropdown-item" href="./accessories.html">
+              <span class="nav-dropdown-item-title">Аксессуары</span>
+              <span class="nav-dropdown-item-note">Малые и большие аксессуары</span>
+            </a>
+          </div>
+        </div>
+        <div class="nav-dropdown" data-nav-dropdown>
+          <button class="nav-link is-active nav-dropdown-toggle" type="button" aria-haspopup="true" aria-expanded="false">
+            Тир-листы
+            <span class="nav-dropdown-caret" aria-hidden="true"></span>
+          </button>
+          <div class="nav-dropdown-menu">
+            <a class="nav-dropdown-item" href="./tier-list.html">
+              <span class="nav-dropdown-item-title">Тир-лист героев</span>
+              <span class="nav-dropdown-item-note">Среднее место каждого героя</span>
+            </a>
+            <a class="nav-dropdown-item is-active" href="./minion-tiers.html">
+              <span class="nav-dropdown-item-title">Тир-лист существ</span>
+              <span class="nav-dropdown-item-note">Impact и винрейт боёв (HSReplay)</span>
+            </a>
+            <a class="nav-dropdown-item" href="./spell-tiers.html">
+              <span class="nav-dropdown-item-title">Тир-лист заклинаний</span>
+              <span class="nav-dropdown-item-note">Среднее место (Firestone)</span>
+            </a>
+          </div>
+        </div>
+        <a class="nav-link" href="./hero-tier-builder.html">Конструктор тир-листов</a>
+        <a class="nav-link" href="./strategy-builder.html">Конструктор стратегий</a>
+      </nav>
+    </header>
+
+    <main class="hero-tiers-main">
+      <section class="hero-tiers-intro">
+        <div>
+          <p class="eyebrow">Живая статистика</p>
+          <h1 class="panel-title">Тир-лист существ</h1>
+          <p id="card-tiers-status" class="library-status">Загружаю статистику существ...</p>
+          <div id="card-tiers-view-toggle" class="view-toggle" role="tablist" aria-label="Вид списка">
+            <button class="chip" type="button" data-view="gallery">Галерея</button>
+            <button class="chip" type="button" data-view="table">Таблица</button>
+          </div>
+        </div>
+        <div id="card-tiers-gallery-toolbar" class="board-toolbar hero-tiers-toolbar">
+          <button id="card-tiers-download-all-png" class="download-button" type="button">Скачать всё PNG</button>
+          <button id="card-tiers-download-all-webp" class="secondary-button" type="button">Скачать всё WebP</button>
+          <div id="card-tiers-background-picker" class="background-picker" aria-label="Фон для скачивания"></div>
+        </div>
+      </section>
+
+      <section id="card-tiers" class="tiers" aria-live="polite"></section>
+
+      <section id="card-table-wrap" class="stats-table-panel" hidden>
+        <label class="control-field stats-table-search">
+          <span class="control-label">Поиск по названию (RU / EN)</span>
+          <input id="card-table-search" class="text-input" type="search" placeholder="Например, Бранн или Brann">
+        </label>
+        <div id="card-table" class="stats-table-scroll"></div>
+      </section>
+    </main>
+  </div>
+
+  <template id="card-tier-template">
+    <section class="tier-section hero-tier-section">
+      <div class="tier-header">
+        <div class="tier-meta">
+          <span class="tier-badge"></span>
+          <div>
+            <h2 class="tier-title"></h2>
+            <p class="tier-summary"></p>
+          </div>
+        </div>
+        <div class="tier-builder-row-actions">
+          <div class="background-picker tier-background-picker" aria-label="Фон этого тира"></div>
+          <button class="secondary-button" type="button" data-export="png">PNG</button>
+          <button class="secondary-button" type="button" data-export="webp">WebP</button>
+        </div>
+      </div>
+      <div class="hero-tier-gallery"></div>
+    </section>
+  </template>
+
+  <script src="./shared.js" defer></script>
+  <script src="./minion-tiers-data.js" defer></script>
+  <script src="./card-tiers.js" defer></script>
+  <script defer>
+    window.addEventListener("DOMContentLoaded", () => {
+      const TIER_RANK = { S: 0, A: 1, B: 2, C: 3, D: 4 };
+      window.CardTiers.init({
+        pageKey: "minion-tiers",
+        fileBase: "minion-tier",
+        apiUrl: "./api/bg-minion-stats",
+        itemsField: "minions",
+        static: window.minionTierStatic,
+        liveLabel: "живая статистика HSReplay",
+        statusNote: "тиры рассчитаны по Impact",
+        countForms: ["существо", "существа", "существ"],
+        tierTitles: {
+          S: "Сильнейшие в мете",
+          A: "Сильные карты",
+          B: "Крепкая середина",
+          C: "Ситуативные",
+          D: "Слабые карты"
+        },
+        metric: {
+          label: "Impact",
+          better: "desc",
+          value: (item) => item.impact,
+          format: (value) => window.CardTiers.formatNumber(value, 2)
+        },
+        quantiles: { S: 0.08, A: 0.25, B: 0.55, C: 0.85 },
+        defaultSort: { key: "impact", dir: "desc" },
+        columns: [
+          { key: "name", label: "Существо", value: (i) => i.ruName || i.name, sort: (i) => i.ruName || i.name, defaultDir: "asc" },
+          { key: "tier", label: "Тир", value: (i) => i.tier || "—", sort: (i) => (i.tier ? TIER_RANK[i.tier] : 99), defaultDir: "asc" },
+          { key: "tavernTier", label: "Таверна", numeric: true, value: (i) => i.tavernTier || "—", sort: (i) => i.tavernTier || null, defaultDir: "asc" },
+          { key: "impact", label: "Impact", numeric: true, value: (i) => window.CardTiers.formatNumber(i.impact, 2), sort: (i) => i.impact, defaultDir: "desc" },
+          { key: "winrate", label: "Винрейт боёв", numeric: true, value: (i) => i.combatWinrate || "—", sort: (i) => Number.parseFloat(i.combatWinrate) || null, defaultDir: "desc" },
+          { key: "popularity", label: "Популярность", numeric: true, value: (i) => i.popularity || "—", sort: (i) => Number.parseFloat(i.popularity) || null, defaultDir: "desc" },
+          { key: "games", label: "Игр с картой", numeric: true, value: (i) => window.CardTiers.formatCount(i.games), sort: (i) => i.games, defaultDir: "desc" }
+        ]
+      });
+    });
+  </script>
+</body>
+</html>

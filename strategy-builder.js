@@ -1934,5 +1934,169 @@ function normalizeHeroCard(hero, tier) {
     }
   }, { passive: true });
 
+  // --- Готовые сборки (HSReplay / Firestone) ---
+
+  const compSelect = document.getElementById("builder-comp-select");
+  const compApplyButton = document.getElementById("builder-comp-apply");
+  const compInfoEl = document.getElementById("builder-comp-info");
+  let compsList = [];
+
+  async function loadComps() {
+    try {
+      const payload = await window.Shared.loadJson("./api/bg-comps");
+      if (Array.isArray(payload.comps) && payload.comps.length) {
+        return payload.comps;
+      }
+      throw new Error("Пустой список сборок.");
+    } catch (error) {
+      console.warn("Сборки из API недоступны, использую локальный снапшот.", error);
+    }
+    return (window.compsStatic && window.compsStatic.comps) || [];
+  }
+
+  function populateCompSelect() {
+    if (!compSelect) return;
+    compSelect.replaceChildren();
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = compsList.length ? "Выбери сборку..." : "Сборки недоступны";
+    compSelect.append(placeholder);
+
+    const bySource = new Map();
+    compsList.forEach((comp) => {
+      if (!bySource.has(comp.source)) {
+        bySource.set(comp.source, []);
+      }
+      bySource.get(comp.source).push(comp);
+    });
+    bySource.forEach((comps, source) => {
+      const group = document.createElement("optgroup");
+      group.label = source;
+      comps
+        .slice()
+        .sort((left, right) => String(left.title).localeCompare(String(right.title), "ru-RU"))
+        .forEach((comp) => {
+          const option = document.createElement("option");
+          option.value = comp.key;
+          const tierPrefix = comp.tier ? `[${comp.tier}] ` : "";
+          option.textContent = `${tierPrefix}${comp.title}`;
+          group.append(option);
+        });
+      compSelect.append(group);
+    });
+  }
+
+  function selectedComp() {
+    return compsList.find((comp) => comp.key === compSelect?.value) || null;
+  }
+
+  function renderCompInfo() {
+    if (!compInfoEl) return;
+    const comp = selectedComp();
+    if (!comp) {
+      compInfoEl.hidden = true;
+      compInfoEl.textContent = "";
+      if (compApplyButton) compApplyButton.disabled = true;
+      return;
+    }
+    const bits = [comp.source];
+    if (comp.tier) bits.push(`${comp.tier}-тир`);
+    if (comp.difficulty) bits.push(`сложность: ${comp.difficulty}`);
+    if (comp.avgPlacement) bits.push(`среднее место ${comp.avgPlacement}`);
+    bits.push(`${comp.cards.length} карт`);
+    compInfoEl.textContent = `${bits.join(" · ")}${comp.description ? ` — ${comp.description}` : ""}`;
+    compInfoEl.hidden = false;
+    if (compApplyButton) compApplyButton.disabled = false;
+  }
+
+  function normalizeCompName(value) {
+    return String(value || "").toLowerCase().replace(/['’`]/g, "'").replace(/\s+/g, " ").trim();
+  }
+
+  function findLibraryCardForCompCard(compCard) {
+    const id = String(compCard.id || "");
+    const direct = state.cards.find((card) => card.source === "MINION" && String(card.id) === id);
+    if (direct) return direct;
+
+    if (compCard.dbfId) {
+      const spell = state.cards.find((card) => card.source === "SPELL" && String(card.id) === `spell-${compCard.dbfId}`);
+      if (spell) return spell;
+    }
+
+    const en = normalizeCompName(compCard.name);
+    if (en) {
+      const byEnglish = state.cards.find((card) => (
+        (card.source === "MINION" || card.source === "SPELL") && normalizeCompName(card.englishName) === en
+      ));
+      if (byEnglish) return byEnglish;
+    }
+
+    const ru = normalizeCompName(compCard.ruName);
+    if (ru) {
+      const byRussian = state.cards.find((card) => (
+        (card.source === "MINION" || card.source === "SPELL") && normalizeCompName(card.name) === ru
+      ));
+      if (byRussian) return byRussian;
+    }
+
+    return null;
+  }
+
+  function applyComp(comp) {
+    if (!comp) return;
+    if (!state.cards.length) {
+      setStatus("Библиотека ещё загружается — попробуй через пару секунд.");
+      return;
+    }
+    if (state.placed.length && !window.confirm(`Полотно будет очищено и заполнено сборкой «${comp.title}». Продолжить?`)) {
+      return;
+    }
+
+    state.placed = [];
+    state.activeId = null;
+    state.annotations = [];
+    state.pendingAnnotation = null;
+
+    const missing = [];
+    let placedCount = 0;
+    const ordered = [
+      ...comp.cards.filter((card) => card.role === "CORE"),
+      ...comp.cards.filter((card) => card.role !== "CORE")
+    ];
+
+    for (const compCard of ordered) {
+      if (placedCount >= BOARD_SLOT_COUNT) {
+        break;
+      }
+      const libraryCard = findLibraryCardForCompCard(compCard);
+      if (!libraryCard) {
+        missing.push(compCard.ruName || compCard.name);
+        continue;
+      }
+      const copies = Math.max(1, Math.min(Number(compCard.count) || 1, BOARD_SLOT_COUNT - placedCount));
+      for (let copy = 0; copy < copies; copy += 1) {
+        addCardToBoard(libraryCard);
+        placedCount += 1;
+      }
+    }
+
+    const parts = [`Сборка «${comp.title}» (${comp.source}): на полотне ${placedCount} карт`];
+    if (missing.length) {
+      parts.push(`не найдено в библиотеке: ${missing.join(", ")}`);
+    }
+    setStatus(`${parts.join(". ")}.`);
+  }
+
+  async function initCompImport() {
+    if (!compSelect || !compApplyButton) return;
+    compsList = await loadComps();
+    populateCompSelect();
+    renderCompInfo();
+    compSelect.addEventListener("change", renderCompInfo);
+    compApplyButton.addEventListener("click", () => applyComp(selectedComp()));
+  }
+
+  initCompImport();
+
   bootstrap();
 })();

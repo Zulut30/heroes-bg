@@ -49,7 +49,26 @@
             </a>
           </div>
         </div>
-        <a class="nav-link" href="./tier-list.html">Тир-лист героев</a>
+        <div class="nav-dropdown" data-nav-dropdown>
+          <button class="nav-link nav-dropdown-toggle" type="button" aria-haspopup="true" aria-expanded="false">
+            Тир-листы
+            <span class="nav-dropdown-caret" aria-hidden="true"></span>
+          </button>
+          <div class="nav-dropdown-menu">
+            <a class="nav-dropdown-item" href="./tier-list.html">
+              <span class="nav-dropdown-item-title">Тир-лист героев</span>
+              <span class="nav-dropdown-item-note">Среднее место каждого героя</span>
+            </a>
+            <a class="nav-dropdown-item" href="./minion-tiers.html">
+              <span class="nav-dropdown-item-title">Тир-лист существ</span>
+              <span class="nav-dropdown-item-note">Impact и винрейт боёв (HSReplay)</span>
+            </a>
+            <a class="nav-dropdown-item" href="./spell-tiers.html">
+              <span class="nav-dropdown-item-title">Тир-лист заклинаний</span>
+              <span class="nav-dropdown-item-note">Среднее место (Firestone)</span>
+            </a>
+          </div>
+        </div>
         <a class="nav-link" href="./hero-tier-builder.html">Конструктор тир-листов</a>
         <a class="nav-link is-active" href="./strategy-builder.html">Конструктор стратегий</a>
       </nav>
@@ -58,6 +77,20 @@
     <main class="builder-layout">
       <section class="builder-sidebar builder-sidebar-wide">
         <div class="builder-controls">
+          <div class="filter-block comp-import-block">
+            <div class="filter-heading-row">
+              <h3 class="filter-heading">Готовые сборки</h3>
+            </div>
+            <label class="control-field">
+              <span class="control-label">Мета-сборки HSReplay и Firestone</span>
+              <select id="builder-comp-select" class="select-input">
+                <option value="">Загружаю сборки...</option>
+              </select>
+            </label>
+            <p id="builder-comp-info" class="comp-import-info" hidden></p>
+            <button id="builder-comp-apply" class="download-button" type="button" disabled>Собрать на полотне</button>
+          </div>
+
           <label class="control-field">
             <span class="control-label">Поиск по картам (RU / EN)</span>
             <input id="builder-search" class="text-input" type="search" placeholder="Например, Морхи, murloc, deathrattle, tavern">
@@ -180,6 +213,7 @@
   <script src="./shared.js" defer></script>
   <script src="./tier-data.js" defer></script>
   <script src="./accessories-data.js" defer></script>
+  <script src="./comps-data.js" defer></script>
   <script src="./strategy-builder.js" defer></script>
 </body>
 </html>
