@@ -570,25 +570,24 @@
     state.filtered.forEach((card) => {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = `builder-card${card.source === "SPELL" ? " is-spell" : ""}${card.source === "HERO" ? " is-hero" : ""}`;
+      button.className = `builder-card builder-card-tile${card.source === "SPELL" ? " is-spell" : ""}${card.source === "HERO" ? " is-hero" : ""}`;
       button.draggable = true;
       const safeName = window.Shared.escapeHtml(card.name);
-      const safeMeta = window.Shared.escapeHtml(getLibraryMeta(card));
-      const safeBadge = window.Shared.escapeHtml(getSourceLabel(card));
-      const safeTier = window.Shared.escapeHtml(card.source === "HERO" ? card.heroTier || "?" : `Т${card.techLevel || "?"}`);
+      button.title = `${card.name} — ${getSourceLabel(card)} • ${getLibraryMeta(card)}`;
+      const displaySrc = card.source === "MINION" && card.artUrl ? card.artUrl : getCardArtUrl(card, "256x");
       button.innerHTML = `
         <div class="builder-card-media">
-          <img class="builder-card-art" src="${getCardArtUrl(card, "256x")}" alt="${safeName}" loading="lazy" decoding="async">
-        </div>
-        <div class="builder-card-copy">
-          <div class="builder-card-topline">
-            <span class="builder-card-badge">${safeBadge}</span>
-            <span class="builder-card-tier">${safeTier}</span>
-          </div>
-          <strong>${safeName}</strong>
-          <span>${safeMeta}</span>
+          <img class="builder-card-art" src="${window.Shared.escapeHtml(displaySrc)}" alt="${safeName}" loading="lazy" decoding="async">
         </div>
       `;
+      const art = button.querySelector(".builder-card-art");
+      art.addEventListener("error", () => {
+        const fallback = getCardArtUrl(card, "256x");
+        if (!art.dataset.fallback && art.getAttribute("src") !== fallback) {
+          art.dataset.fallback = "1";
+          art.src = fallback;
+        }
+      });
 
       button.addEventListener("dragstart", (event) => {
         state.draggingLibrary = true;
@@ -1934,12 +1933,97 @@ function normalizeHeroCard(hero, tier) {
     }
   }, { passive: true });
 
+  // --- Колонки библиотеки ---
+
+  const LIBRARY_COLUMNS_STORAGE_KEY = "strategy-builder-library-columns-v1";
+  const LIBRARY_COLUMNS_MIN = 2;
+  const LIBRARY_COLUMNS_MAX = 5;
+  const libraryColumnsInput = document.getElementById("builder-library-columns");
+  const libraryColumnsValueEl = document.getElementById("builder-library-columns-value");
+
+  function loadLibraryColumns() {
+    try {
+      const value = Number.parseInt(window.localStorage.getItem(LIBRARY_COLUMNS_STORAGE_KEY), 10);
+      if (Number.isFinite(value)) {
+        return Math.min(LIBRARY_COLUMNS_MAX, Math.max(LIBRARY_COLUMNS_MIN, value));
+      }
+    } catch (error) {
+      // ignore
+    }
+    return 3;
+  }
+
+  let libraryColumns = loadLibraryColumns();
+
+  function applyLibraryColumns() {
+    if (libraryEl) {
+      libraryEl.style.setProperty("--library-columns", String(libraryColumns));
+    }
+    if (libraryColumnsValueEl) {
+      libraryColumnsValueEl.textContent = String(libraryColumns);
+    }
+    if (libraryColumnsInput && libraryColumnsInput.value !== String(libraryColumns)) {
+      libraryColumnsInput.value = String(libraryColumns);
+    }
+  }
+
+  if (libraryColumnsInput) {
+    libraryColumnsInput.min = String(LIBRARY_COLUMNS_MIN);
+    libraryColumnsInput.max = String(LIBRARY_COLUMNS_MAX);
+    libraryColumnsInput.addEventListener("input", () => {
+      const value = Number.parseInt(libraryColumnsInput.value, 10);
+      if (!Number.isFinite(value)) return;
+      libraryColumns = Math.min(LIBRARY_COLUMNS_MAX, Math.max(LIBRARY_COLUMNS_MIN, value));
+      applyLibraryColumns();
+      try {
+        window.localStorage.setItem(LIBRARY_COLUMNS_STORAGE_KEY, String(libraryColumns));
+      } catch (error) {
+        // ignore
+      }
+    });
+  }
+
+  applyLibraryColumns();
+
   // --- Готовые сборки (HSReplay / Firestone) ---
 
   const compSelect = document.getElementById("builder-comp-select");
   const compApplyButton = document.getElementById("builder-comp-apply");
   const compInfoEl = document.getElementById("builder-comp-info");
+  const compCardsEl = document.getElementById("builder-comp-cards");
   let compsList = [];
+
+  function compCardArtUrl(compCard, size = "256x") {
+    return `https://art.hearthstonejson.com/v1/bgs/latest/ruRU/${encodeURIComponent(size)}/${encodeURIComponent(compCard.id)}.png`;
+  }
+
+  function renderCompCards(comp) {
+    if (!compCardsEl) return;
+    compCardsEl.replaceChildren();
+    if (!comp) {
+      compCardsEl.hidden = true;
+      return;
+    }
+    comp.cards.slice(0, 15).forEach((compCard) => {
+      const img = document.createElement("img");
+      img.className = `comp-import-thumb${compCard.role === "CORE" ? " is-core" : ""}`;
+      img.src = compCardArtUrl(compCard);
+      img.alt = compCard.ruName || compCard.name;
+      img.title = `${compCard.ruName || compCard.name}${compCard.role === "CORE" ? " · ядро сборки" : ""}`;
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.addEventListener("error", () => {
+        if (!img.dataset.fallback) {
+          img.dataset.fallback = "1";
+          img.src = `/api/card-art?id=${encodeURIComponent(compCard.id)}&locale=ruRU&size=256x`;
+        } else {
+          img.remove();
+        }
+      });
+      compCardsEl.append(img);
+    });
+    compCardsEl.hidden = false;
+  }
 
   async function loadComps() {
     try {
@@ -1996,6 +2080,7 @@ function normalizeHeroCard(hero, tier) {
     if (!comp) {
       compInfoEl.hidden = true;
       compInfoEl.textContent = "";
+      renderCompCards(null);
       if (compApplyButton) compApplyButton.disabled = true;
       return;
     }
@@ -2006,6 +2091,7 @@ function normalizeHeroCard(hero, tier) {
     bits.push(`${comp.cards.length} карт`);
     compInfoEl.textContent = `${bits.join(" · ")}${comp.description ? ` — ${comp.description}` : ""}`;
     compInfoEl.hidden = false;
+    renderCompCards(comp);
     if (compApplyButton) compApplyButton.disabled = false;
   }
 

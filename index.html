@@ -80,34 +80,35 @@
           <span class="landing-badge">Hearthstone · Battlegrounds</span>
           <h1 class="landing-title">Manacost Battleground</h1>
           <p class="landing-lead">
-            Всё для подготовки стратегий Полей сражений в одном месте — фильтруй героев, заклинания, существ и аксессуары,
-            собирай тир-листы и полотна стратегий, добавляй стрелки и подписи, скачивай готовую картинку в PNG или WebP.
+            Всё для подготовки стратегий Полей сражений в одном месте: живые тир-листы героев, существ и заклинаний
+            по статистике HSReplay и Firestone, готовые мета-сборки одним кликом на полотне, аннотации стрелками
+            и подписями — и скачивание любой картинки в PNG или WebP на игровом фоне.
           </p>
           <div class="landing-cta">
             <a class="landing-cta-primary" href="./strategy-builder.html">
               <span>Собрать стратегию</span>
               <span class="landing-cta-arrow" aria-hidden="true">→</span>
             </a>
-            <a class="landing-cta-secondary" href="./hero-tier-builder.html">Открыть тир-листы</a>
+            <a class="landing-cta-secondary" href="./tier-list.html">Тир-лист героев</a>
             <a class="landing-cta-secondary" href="./library.html">Библиотека</a>
           </div>
 
-          <ul class="landing-stats" aria-label="Библиотека карт">
+          <ul class="landing-stats" aria-label="Что внутри">
+            <li>
+              <span class="landing-stat-value">114</span>
+              <span class="landing-stat-label">героев</span>
+            </li>
             <li>
               <span class="landing-stat-value">270+</span>
               <span class="landing-stat-label">существ</span>
             </li>
             <li>
-              <span class="landing-stat-value">113</span>
-              <span class="landing-stat-label">героев</span>
+              <span class="landing-stat-value">54</span>
+              <span class="landing-stat-label">мета-сборки</span>
             </li>
             <li>
-              <span class="landing-stat-value">71</span>
-              <span class="landing-stat-label">заклинание</span>
-            </li>
-            <li>
-              <span class="landing-stat-value">70</span>
-              <span class="landing-stat-label">аксессуаров</span>
+              <span class="landing-stat-value">3</span>
+              <span class="landing-stat-label">живых тир-листа</span>
             </li>
           </ul>
         </div>
@@ -141,7 +142,7 @@
           <a class="landing-feature landing-feature-strategy" href="./strategy-builder.html">
             <span class="landing-feature-kicker">Strategy</span>
             <h3>Конструктор стратегий</h3>
-            <p>Полотно 5×3, быстрые слоты, аннотации стрелками и подписями, 4 сменных фона, подсветка ключевых карт и экспорт в PNG/WebP.</p>
+            <p>Полотно 5×3 с готовыми мета-сборками HSReplay и Firestone, быстрые слоты, аннотации стрелками и подписями, сменные фоны и экспорт в PNG/WebP.</p>
             <span class="landing-feature-cta">Открыть конструктор →</span>
           </a>
 
@@ -157,6 +158,20 @@
             <h3>Тир-лист героев</h3>
             <p>Актуальный тир-лист героев по живой статистике HSReplay: среднее место каждого героя и скачивание тиров на игровом фоне.</p>
             <span class="landing-feature-cta">Смотреть тир-лист →</span>
+          </a>
+
+          <a class="landing-feature landing-feature-herotiers" href="./minion-tiers.html">
+            <span class="landing-feature-kicker">Live Stats</span>
+            <h3>Тир-лист существ</h3>
+            <p>Все существа по тирам S–D с Impact и винрейтом боёв HSReplay: галерея со скачиванием и подробная таблица с поиском.</p>
+            <span class="landing-feature-cta">Смотреть существ →</span>
+          </a>
+
+          <a class="landing-feature landing-feature-spells" href="./spell-tiers.html">
+            <span class="landing-feature-kicker">Live Stats</span>
+            <h3>Тир-лист заклинаний</h3>
+            <p>Заклинания таверны по среднему месту из статистики Firestone — галерея по тирам и таблица со всеми цифрами.</p>
+            <span class="landing-feature-cta">Смотреть заклинания →</span>
           </a>
 
           <a class="landing-feature landing-feature-library" href="./library.html">
@@ -205,6 +220,16 @@
             <h4>Быстрые слоты</h4>
             <p>До 10 карт, которые ты используешь чаще всего — держатся между сессиями и перетаскиваются на полотно одним кликом.</p>
           </article>
+          <article class="landing-highlight">
+            <span class="landing-highlight-icon" aria-hidden="true">⚡</span>
+            <h4>Живая статистика</h4>
+            <p>Тир-листы героев, существ и заклинаний строятся по свежим данным HSReplay и Firestone — без ручных обновлений.</p>
+          </article>
+          <article class="landing-highlight">
+            <span class="landing-highlight-icon" aria-hidden="true">⚒</span>
+            <h4>Готовые сборки</h4>
+            <p>54 мета-сборки с ядром и дополнениями — выбери в конструкторе, и карты сами встанут на полотно.</p>
+          </article>
         </div>
       </section>
     </main>
@@ -223,7 +248,9 @@
           <a class="nav-link" href="./blizzard-spells.html">Заклинания</a>
           <a class="nav-link" href="./accessories.html">Аксессуары</a>
           <a class="nav-link" href="./tier-list.html">Тир-лист героев</a>
-          <a class="nav-link" href="./hero-tier-builder.html">Тир-листы</a>
+          <a class="nav-link" href="./minion-tiers.html">Тир-лист существ</a>
+          <a class="nav-link" href="./spell-tiers.html">Тир-лист заклинаний</a>
+          <a class="nav-link" href="./hero-tier-builder.html">Конструктор тир-листов</a>
           <a class="nav-link" href="./strategy-builder.html">Стратегии</a>
         </nav>
       </div>

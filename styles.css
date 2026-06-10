@@ -802,7 +802,7 @@ body .accessories-grid .card-art,
 
 .builder-library {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--library-columns, 3), minmax(0, 1fr));
   gap: 12px;
   max-height: calc(100vh - 420px);
   margin-top: 16px;
@@ -1956,7 +1956,7 @@ body .accessories-grid .card-art,
   }
 
   .builder-library {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(var(--library-columns, 3), minmax(0, 1fr));
     max-height: 60vh;
   }
 
@@ -2842,4 +2842,50 @@ textarea:focus-visible,
 /* Атрибут hidden должен побеждать display из классов (.tiers — grid, .board-toolbar — flex) */
 .hero-tiers-main [hidden] {
   display: none !important;
+}
+
+/* --- Галерея библиотеки конструктора и превью сборок --- */
+
+.builder-card-tile {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 8px;
+  contain-intrinsic-size: 160px;
+}
+
+.builder-card-tile .builder-card-media {
+  border-radius: 12px;
+}
+
+.library-toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.library-toolbar-row .library-status {
+  flex: 1 1 180px;
+  margin: 0;
+}
+
+.comp-import-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 12px;
+}
+
+.comp-import-thumb {
+  width: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.04);
+  object-fit: contain;
+}
+
+.comp-import-thumb.is-core {
+  border-color: rgba(240, 215, 154, 0.65);
+  box-shadow: 0 0 0 1px rgba(240, 215, 154, 0.35);
 }

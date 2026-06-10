@@ -56,18 +56,36 @@ function normalizeCards(comp) {
   return cards;
 }
 
+const DIFFICULTY_RU = { Easy: "Лёгкая", Medium: "Средняя", Hard: "Сложная" };
+
+// У HSReplay name/title часто либо общие («Beasts» × 3), либо склеены с описанием;
+// slug со страницы comps всегда чистый и осмысленный («Beasts Leviathan»).
+// Описание заканчивается мусорным хвостом вида «Medium651561066» — отрезаем его.
+function parseHsreplayMeta(comp) {
+  let description = String(comp?.description || "").trim();
+  let difficulty = "";
+  const match = description.match(/(Easy|Medium|Hard)\d*$/);
+  if (match) {
+    difficulty = DIFFICULTY_RU[match[1]] || "";
+    description = description.slice(0, match.index).trim();
+  }
+  const title = String(comp?.slug || "").trim() || String(comp?.name || comp?.title || "").trim();
+  return { title, difficulty, description };
+}
+
 function normalizeComp(comp, label) {
   const cards = normalizeCards(comp);
   if (!cards.length) {
     return null;
   }
+  const hsreplayMeta = label === "HSReplay" ? parseHsreplayMeta(comp) : null;
   return {
     key: String(comp?.id || `${label}-${comp?.comp_id}`),
     source: label,
-    title: String(comp?.title || comp?.name || "").trim(),
-    description: String(comp?.description || "").trim().slice(0, 300),
+    title: hsreplayMeta ? hsreplayMeta.title : String(comp?.title || comp?.name || "").trim(),
+    description: (hsreplayMeta ? hsreplayMeta.description : String(comp?.description || "").trim()).slice(0, 300),
     tier: String(comp?.tier || "").trim(),
-    difficulty: String(comp?.difficulty_ru || comp?.difficulty || "").trim(),
+    difficulty: hsreplayMeta ? hsreplayMeta.difficulty : String(comp?.difficulty_ru || comp?.difficulty || "").trim(),
     avgPlacement: comp?.avg_placement != null ? String(comp.avg_placement) : "",
     cards
   };

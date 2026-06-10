@@ -88,6 +88,7 @@
               </select>
             </label>
             <p id="builder-comp-info" class="comp-import-info" hidden></p>
+            <div id="builder-comp-cards" class="comp-import-cards" hidden></div>
             <button id="builder-comp-apply" class="download-button" type="button" disabled>Собрать на полотне</button>
           </div>
 
@@ -126,7 +127,13 @@
 
         </div>
 
-        <div id="builder-status" class="library-status">Загружаю карты...</div>
+        <div class="library-toolbar-row">
+          <div id="builder-status" class="library-status">Загружаю карты...</div>
+          <label class="columns-control" for="builder-library-columns" title="Сколько карт в ряду в библиотеке">
+            <span class="columns-control-label">В ряду: <b id="builder-library-columns-value">3</b></span>
+            <input id="builder-library-columns" class="columns-range" type="range" min="2" max="5" step="1">
+          </label>
+        </div>
         <div id="builder-library" class="builder-library builder-library-dense" aria-live="polite"></div>
       </section>
 
