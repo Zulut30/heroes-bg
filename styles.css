@@ -2593,9 +2593,36 @@ textarea:focus-visible,
 
 .hero-tier-gallery {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--tier-columns, 6), minmax(0, 1fr));
   gap: 16px;
   margin-top: 20px;
+}
+
+.columns-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.columns-control-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.columns-control-label b {
+  color: var(--gold-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.columns-range {
+  width: 110px;
+  accent-color: var(--gold);
+  cursor: pointer;
 }
 
 .tier-background-picker .background-chip {

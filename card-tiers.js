@@ -55,10 +55,15 @@
     const galleryToolbarEl = document.getElementById("card-tiers-gallery-toolbar");
     const searchInput = document.getElementById("card-table-search");
     const tableWrap = document.getElementById("card-table-wrap");
+    const columnsInput = document.getElementById("card-tiers-columns");
+    const columnsValueEl = document.getElementById("card-tiers-columns-value");
 
     const BACKGROUND_STORAGE_KEY = `${config.pageKey}-background-mode-v1`;
     const TIER_BACKGROUND_STORAGE_KEY = `${config.pageKey}-tier-backgrounds-v1`;
     const VIEW_STORAGE_KEY = `${config.pageKey}-view-v1`;
+    const COLUMNS_STORAGE_KEY = `${config.pageKey}-columns-v1`;
+    const COLUMNS_MIN = 3;
+    const COLUMNS_MAX = 10;
 
     const nameByDbfId = (config.static && config.static.nameByDbfId) || {};
 
@@ -68,10 +73,33 @@
       view: loadView(),
       backgroundMode: loadBackgroundMode(),
       tierBackgrounds: loadTierBackgrounds(),
+      columns: loadColumns(),
       sortKey: config.defaultSort.key,
       sortDir: config.defaultSort.dir,
       search: ""
     };
+
+    function loadColumns() {
+      try {
+        const value = Number.parseInt(window.localStorage.getItem(COLUMNS_STORAGE_KEY), 10);
+        if (Number.isFinite(value)) {
+          return Math.min(COLUMNS_MAX, Math.max(COLUMNS_MIN, value));
+        }
+      } catch (error) {
+        // ignore
+      }
+      return config.defaultColumns || 6;
+    }
+
+    function applyColumns() {
+      tiersRoot.style.setProperty("--tier-columns", String(state.columns));
+      if (columnsValueEl) {
+        columnsValueEl.textContent = String(state.columns);
+      }
+      if (columnsInput && columnsInput.value !== String(state.columns)) {
+        columnsInput.value = String(state.columns);
+      }
+    }
 
     function loadView() {
       try {
@@ -340,7 +368,6 @@
     // --- Экспорт (та же логика фона, что и в конструкторе стратегий) ---
 
     const EXPORT_CARD_WIDTH = 256;
-    const EXPORT_COLUMNS_MAX = 6;
     const EXPORT_SIDE_PADDING = 48;
     const EXPORT_TOP_PADDING = 36;
     const EXPORT_BOTTOM_PADDING = 36;
@@ -512,7 +539,7 @@
       }
       await prepareExportFont();
 
-      const columns = Math.min(entries.length, EXPORT_COLUMNS_MAX);
+      const columns = Math.min(entries.length, state.columns);
       const layout = measureSection(entries, columns);
       const canvas = document.createElement("canvas");
       canvas.width = canvasWidthFor(columns);
@@ -544,7 +571,7 @@
       }
       await prepareExportFont();
 
-      const columns = EXPORT_COLUMNS_MAX;
+      const columns = state.columns;
       const layouts = sections.map((section) => ({
         tier: section.tier,
         layout: measureSection(section.entries, columns)
@@ -765,6 +792,22 @@
       }, 150));
     }
 
+    if (columnsInput) {
+      columnsInput.min = String(COLUMNS_MIN);
+      columnsInput.max = String(COLUMNS_MAX);
+      columnsInput.addEventListener("input", () => {
+        const value = Number.parseInt(columnsInput.value, 10);
+        if (!Number.isFinite(value)) return;
+        state.columns = Math.min(COLUMNS_MAX, Math.max(COLUMNS_MIN, value));
+        applyColumns();
+        try {
+          window.localStorage.setItem(COLUMNS_STORAGE_KEY, String(state.columns));
+        } catch (error) {
+          // ignore
+        }
+      });
+    }
+
     if (downloadAllPngButton) {
       downloadAllPngButton.addEventListener("click", (event) => {
         runExport(event.currentTarget, () => exportAllTiers("png"));
@@ -785,6 +828,7 @@
           state.tierBackgrounds = {};
         }
       );
+      applyColumns();
       try {
         const result = await loadStats();
         state.items = prepareItems(result.items);
