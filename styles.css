@@ -2811,3 +2811,8 @@ textarea:focus-visible,
   font-size: 0.82rem;
   line-height: 1.45;
 }
+
+/* Атрибут hidden должен побеждать display из классов (.tiers — grid, .board-toolbar — flex) */
+.hero-tiers-main [hidden] {
+  display: none !important;
+}
