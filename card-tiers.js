@@ -43,6 +43,38 @@
     return new Intl.NumberFormat("ru-RU").format(Number(value));
   }
 
+  const raceNames = {
+    NONE: "Нейтральные",
+    ALL: "Все типы",
+    BEAST: "Звери",
+    DEMON: "Демоны",
+    DRAGON: "Драконы",
+    ELEMENTAL: "Элементали",
+    MECHANICAL: "Механизмы",
+    MURLOC: "Мурлоки",
+    NAGA: "Наги",
+    PIRATE: "Пираты",
+    QUILBOAR: "Свинобразы",
+    UNDEAD: "Нежить"
+  };
+
+  const raceIcons = {
+    ALL: "./assset/общее.webp",
+    NONE: "./assset/общее.webp",
+    BEAST: "./assset/зверь.webp",
+    DEMON: "./assset/демоны.webp",
+    DRAGON: "./assset/драконы.webp",
+    ELEMENTAL: "./assset/элементали.webp",
+    MECHANICAL: "./assset/механизмы.webp",
+    MURLOC: "./assset/мурлоки.webp",
+    NAGA: "./assset/наги.webp",
+    PIRATE: "./assset/пираты.webp",
+    QUILBOAR: "./assset/свинобразы.webp",
+    UNDEAD: "./assset/нежить.webp"
+  };
+
+  const RACE_ORDER = ["ALL", "NONE", "BEAST", "DEMON", "DRAGON", "ELEMENTAL", "MECHANICAL", "MURLOC", "NAGA", "PIRATE", "QUILBOAR", "UNDEAD"];
+
   function init(config) {
     const tiersRoot = document.getElementById("card-tiers");
     const tableRoot = document.getElementById("card-table");
@@ -57,6 +89,8 @@
     const tableWrap = document.getElementById("card-table-wrap");
     const columnsInput = document.getElementById("card-tiers-columns");
     const columnsValueEl = document.getElementById("card-tiers-columns-value");
+    const filtersPanelEl = document.getElementById("card-tiers-filters");
+    const lightboxEl = document.getElementById("lightbox");
 
     const BACKGROUND_STORAGE_KEY = `${config.pageKey}-background-mode-v1`;
     const TIER_BACKGROUND_STORAGE_KEY = `${config.pageKey}-tier-backgrounds-v1`;
@@ -76,8 +110,25 @@
       columns: loadColumns(),
       sortKey: config.defaultSort.key,
       sortDir: config.defaultSort.dir,
-      search: ""
+      search: "",
+      filterRace: "ALL",
+      filterTavern: "ALL",
+      galleryItems: [],
+      lightboxIndex: -1
     };
+
+    const FILTERS = config.filters || {};
+
+    function matchesFilters(item) {
+      const tavernOk = state.filterTavern === "ALL" || String(item.tavernTier || "") === state.filterTavern;
+      const raceOk = state.filterRace === "ALL"
+        || ((item.races && item.races.length ? item.races : ["NONE"]).includes(state.filterRace));
+      return tavernOk && raceOk;
+    }
+
+    function filtersActive() {
+      return state.filterRace !== "ALL" || state.filterTavern !== "ALL";
+    }
 
     function loadColumns() {
       try {
@@ -173,14 +224,16 @@
       return { items: fallback, fetchedAt: config.static.snapshotAt, live: false };
     }
 
-    function prepareItems(rawItems) {
+    function prepareItems(rawItems, enrichByDbfId) {
       return rawItems
         .filter((item) => item && item.id)
         .map((item) => {
           const metricValue = config.metric.value(item);
+          const extra = enrichByDbfId ? enrichByDbfId.get(String(item.dbfId)) : null;
           return {
             ...item,
-            ruName: nameByDbfId[String(item.dbfId)] || item.name || "",
+            races: extra?.races || item.races || [],
+            ruName: nameByDbfId[String(item.dbfId)] || extra?.name || item.name || "",
             metricValue: Number.isFinite(Number(metricValue)) && metricValue !== null ? Number(metricValue) : null,
             metricLabel: config.metric.format(metricValue)
           };
@@ -235,12 +288,150 @@
       statusEl.textContent = `${formatUnitCount(state.items.length)} · ${sourceLabel}${dateLabel ? ` · обновлено ${dateLabel}` : ""} · ${config.statusNote}${unratedNote}`;
     }
 
+    // --- Фильтры (таверна, тип существа) ---
+
+    function createFilterChip(label, isActive, onClick, icon) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `chip${isActive ? " is-active" : ""}`;
+      if (icon) {
+        button.style.setProperty("--chip-icon", `url("${icon}")`);
+        button.classList.add("chip-with-icon");
+        button.innerHTML = '<span class="chip-icon" aria-hidden="true"></span>';
+      }
+      const text = document.createElement("span");
+      text.className = "chip-label";
+      text.textContent = label;
+      button.append(text);
+      button.addEventListener("click", onClick);
+      return button;
+    }
+
+    function onFiltersChanged() {
+      renderFilters();
+      renderTiers();
+      if (state.view === "table") {
+        renderTable();
+      }
+    }
+
+    function renderFilters() {
+      if (!filtersPanelEl || (!FILTERS.races && !FILTERS.tavern)) {
+        return;
+      }
+      filtersPanelEl.hidden = false;
+      filtersPanelEl.replaceChildren();
+
+      if (FILTERS.races) {
+        const block = document.createElement("div");
+        block.className = "filter-block";
+        block.innerHTML = '<div class="filter-heading-row"><h3 class="filter-heading">Тип существа</h3></div>';
+        const row = document.createElement("div");
+        row.className = "chip-row";
+        RACE_ORDER.forEach((race) => {
+          row.append(createFilterChip(raceNames[race] || race, state.filterRace === race, () => {
+            state.filterRace = race;
+            onFiltersChanged();
+          }, raceIcons[race]));
+        });
+        block.append(row);
+        filtersPanelEl.append(block);
+      }
+
+      if (FILTERS.tavern) {
+        const block = document.createElement("div");
+        block.className = "filter-block";
+        block.innerHTML = '<div class="filter-heading-row"><h3 class="filter-heading">Уровень таверны</h3></div>';
+        const row = document.createElement("div");
+        row.className = "chip-row";
+        const levels = [{ value: "ALL", label: "Все уровни", icon: null }, ...["1", "2", "3", "4", "5", "6", "7"].map((level) => ({
+          value: level,
+          label: `Таверна ${level}`,
+          icon: `./assset/tier${level}.png`
+        }))];
+        levels.forEach((level) => {
+          row.append(createFilterChip(level.label, state.filterTavern === level.value, () => {
+            state.filterTavern = level.value;
+            onFiltersChanged();
+          }, level.icon));
+        });
+        block.append(row);
+        filtersPanelEl.append(block);
+      }
+    }
+
+    // --- Лайтбокс ---
+
+    function lightboxArtFallback(img, item) {
+      img.addEventListener("error", () => {
+        if (!img.dataset.fallback) {
+          img.dataset.fallback = "1";
+          img.src = proxyArtUrl(item.id, "512x");
+        }
+      });
+    }
+
+    function openLightbox(index) {
+      if (!lightboxEl || !state.galleryItems.length) return;
+      const item = state.galleryItems[(index + state.galleryItems.length) % state.galleryItems.length];
+      if (!item) return;
+      state.lightboxIndex = (index + state.galleryItems.length) % state.galleryItems.length;
+      const image = lightboxEl.querySelector("#lightbox-image");
+      image.dataset.fallback = "";
+      image.src = directArtUrl(item.id, "512x");
+      image.alt = item.ruName;
+      lightboxArtFallback(image, item);
+      lightboxEl.querySelector("#lightbox-title").textContent = item.ruName;
+      lightboxEl.querySelector("#lightbox-kicker").textContent = item.tier ? `${item.tier}-тир · таверна ${item.tavernTier || "?"}` : `Таверна ${item.tavernTier || "?"}`;
+      lightboxEl.querySelector("#lightbox-meta").textContent = config.lightboxMeta ? config.lightboxMeta(item) : "";
+      lightboxEl.querySelector("#lightbox-text").textContent = item.name && item.name !== item.ruName ? item.name : "";
+      lightboxEl.hidden = false;
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeLightbox() {
+      if (!lightboxEl) return;
+      state.lightboxIndex = -1;
+      lightboxEl.hidden = true;
+      document.body.style.overflow = "";
+      const image = lightboxEl.querySelector("#lightbox-image");
+      image.src = "";
+    }
+
+    function moveLightbox(step) {
+      if (state.lightboxIndex < 0) return;
+      openLightbox(state.lightboxIndex + step);
+    }
+
+    if (lightboxEl) {
+      lightboxEl.querySelectorAll("[data-close-lightbox]").forEach((element) => {
+        element.addEventListener("click", closeLightbox);
+      });
+      lightboxEl.querySelector("#lightbox-prev")?.addEventListener("click", () => moveLightbox(-1));
+      lightboxEl.querySelector("#lightbox-next")?.addEventListener("click", () => moveLightbox(1));
+      document.addEventListener("keydown", (event) => {
+        if (lightboxEl.hidden) return;
+        if (event.key === "Escape") closeLightbox();
+        if (event.key === "ArrowLeft") moveLightbox(-1);
+        if (event.key === "ArrowRight") moveLightbox(1);
+      });
+    }
+
     // --- Галерея ---
 
-    function renderCardTile(item) {
+    function renderCardTile(item, galleryIndex) {
       const tile = document.createElement("figure");
       tile.className = "hero-tile card-render-tile";
+      tile.tabIndex = 0;
+      tile.setAttribute("role", "button");
       tile.title = `${item.ruName}${item.name && item.name !== item.ruName ? ` (${item.name})` : ""} — ${config.metric.label}: ${item.metricLabel} · таверна ${item.tavernTier || "?"}`;
+      tile.addEventListener("click", () => openLightbox(galleryIndex));
+      tile.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openLightbox(galleryIndex);
+        }
+      });
 
       const media = document.createElement("div");
       media.className = "hero-tile-media card-render-media";
@@ -312,7 +503,13 @@
     function renderTiers() {
       tiersRoot.replaceChildren();
       tierPickerUpdaters.length = 0;
+      state.galleryItems = [];
+      let galleryIndex = 0;
       state.sections.forEach((section) => {
+        const visibleItems = section.items.filter(matchesFilters);
+        if (!visibleItems.length) {
+          return;
+        }
         const fragment = template.content.cloneNode(true);
         const badge = fragment.querySelector(".tier-badge");
         const title = fragment.querySelector(".tier-title");
@@ -323,7 +520,9 @@
         badge.textContent = section.tier;
         badge.style.background = `linear-gradient(135deg, ${tierColors[section.tier] || "#f2db9b"}, #b89e61)`;
         title.textContent = `${section.tier} · ${config.tierTitles[section.tier] || `${section.tier}-тир`}`;
-        summary.textContent = formatUnitCount(section.items.length);
+        summary.textContent = filtersActive()
+          ? `${formatUnitCount(visibleItems.length)} из ${section.items.length} по фильтрам`
+          : formatUnitCount(section.items.length);
 
         const update = buildBackgroundPicker(
           tierPickerEl,
@@ -334,7 +533,11 @@
         );
         if (update) tierPickerUpdaters.push(update);
 
-        section.items.forEach((item) => gallery.append(renderCardTile(item)));
+        visibleItems.forEach((item) => {
+          state.galleryItems.push(item);
+          gallery.append(renderCardTile(item, galleryIndex));
+          galleryIndex += 1;
+        });
 
         fragment.querySelector('[data-export="png"]').addEventListener("click", (event) => {
           runExport(event.currentTarget, () => exportTier(section, "png"));
@@ -345,6 +548,13 @@
 
         tiersRoot.append(fragment);
       });
+
+      if (!state.galleryItems.length) {
+        const empty = document.createElement("p");
+        empty.className = "library-status";
+        empty.textContent = "По выбранным фильтрам ничего не найдено.";
+        tiersRoot.append(empty);
+      }
     }
 
     async function runExport(button, task) {
@@ -533,7 +743,7 @@
     }
 
     async function exportTier(section, fileType) {
-      const entries = await loadEntries(section.items);
+      const entries = await loadEntries(section.items.filter(matchesFilters));
       if (!entries.length) {
         throw new Error("Нет карт для экспорта.");
       }
@@ -561,7 +771,11 @@
 
       const sections = [];
       for (const section of state.sections) {
-        const entries = await loadEntries(section.items);
+        const visibleItems = section.items.filter(matchesFilters);
+        if (!visibleItems.length) {
+          continue;
+        }
+        const entries = await loadEntries(visibleItems);
         if (entries.length) {
           sections.push({ tier: section.tier, entries });
         }
@@ -673,11 +887,12 @@
     function getSortedItems() {
       const column = config.columns.find((col) => col.key === state.sortKey) || config.columns[0];
       const dir = state.sortDir === "asc" ? 1 : -1;
+      const filtered = state.items.filter(matchesFilters);
       const searched = state.search
-        ? state.items.filter((item) => (
+        ? filtered.filter((item) => (
           `${item.ruName} ${item.name}`.toLowerCase().includes(state.search.toLowerCase())
         ))
-        : state.items;
+        : filtered;
       return [...searched].sort((left, right) => {
         const a = column.sort(left);
         const b = column.sort(right);
@@ -830,10 +1045,22 @@
       );
       applyColumns();
       try {
-        const result = await loadStats();
-        state.items = prepareItems(result.items);
+        const [result, enrichByDbfId] = await Promise.all([
+          loadStats(),
+          (async () => {
+            if (!config.enrich) return null;
+            try {
+              return await config.enrich();
+            } catch (error) {
+              console.warn("Не удалось загрузить дополнительные данные карт.", error);
+              return null;
+            }
+          })()
+        ]);
+        state.items = prepareItems(result.items, enrichByDbfId);
         state.sections = deriveSections(state.items);
         renderStatus(result);
+        renderFilters();
         renderTiers();
         applyView();
       } catch (error) {

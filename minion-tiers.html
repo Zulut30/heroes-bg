@@ -19,6 +19,7 @@
   <meta name="twitter:image" content="./wallpaper.jpg">
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="preconnect" href="https://art.hearthstonejson.com" crossorigin>
   <link rel="preload" as="font" type="font/otf" href="./font.otf" crossorigin>
   <link rel="stylesheet" href="./styles.css">
 </head>
@@ -95,6 +96,8 @@
         </div>
       </section>
 
+      <section id="card-tiers-filters" class="tier-filters-panel" hidden></section>
+
       <section id="card-tiers" class="tiers" aria-live="polite"></section>
 
       <section id="card-table-wrap" class="stats-table-panel" hidden>
@@ -105,6 +108,25 @@
         <div id="card-table" class="stats-table-scroll"></div>
       </section>
     </main>
+  </div>
+
+
+  <div id="lightbox" class="lightbox" hidden>
+    <div class="lightbox-backdrop" data-close-lightbox="true"></div>
+    <div class="lightbox-dialog" role="dialog" aria-modal="true" aria-labelledby="lightbox-title">
+      <button class="lightbox-close" type="button" data-close-lightbox="true" aria-label="Закрыть">×</button>
+      <button class="lightbox-nav lightbox-prev" id="lightbox-prev" type="button" aria-label="Предыдущая карта">‹</button>
+      <div class="lightbox-body">
+        <img id="lightbox-image" class="lightbox-image" alt="">
+        <div class="lightbox-copy">
+          <p id="lightbox-kicker" class="eyebrow">Battlegrounds Card</p>
+          <h2 id="lightbox-title"></h2>
+          <p id="lightbox-meta" class="lightbox-meta"></p>
+          <p id="lightbox-text" class="lightbox-text"></p>
+        </div>
+      </div>
+      <button class="lightbox-nav lightbox-next" id="lightbox-next" type="button" aria-label="Следующая карта">›</button>
+    </div>
   </div>
 
   <template id="card-tier-template">
@@ -158,6 +180,18 @@
         },
         quantiles: { S: 0.08, A: 0.25, B: 0.55, C: 0.85 },
         defaultSort: { key: "impact", dir: "desc" },
+        filters: { races: true, tavern: true },
+        enrich: async () => {
+          const payload = await window.Shared.loadBattlegroundsLibrary({ locale: "ruRU" });
+          const map = new Map();
+          (payload.cards || []).forEach((card) => {
+            if (card.dbfId) {
+              map.set(String(card.dbfId), { races: card.races || [], name: card.name || "" });
+            }
+          });
+          return map;
+        },
+        lightboxMeta: (i) => `Impact ${window.CardTiers.formatNumber(i.impact, 2)} · винрейт боёв ${i.combatWinrate || "—"} · популярность ${i.popularity || "—"}`,
         columns: [
           { key: "name", label: "Существо", value: (i) => i.ruName || i.name, sort: (i) => i.ruName || i.name, defaultDir: "asc" },
           { key: "tier", label: "Тир", value: (i) => i.tier || "—", sort: (i) => (i.tier ? TIER_RANK[i.tier] : 99), defaultDir: "asc" },
