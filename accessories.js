@@ -42,6 +42,16 @@
     return size === "LARGE" ? "Большой аксессуар" : "Малый аксессуар";
   }
 
+  function getAccessoryMeta(card) {
+    return [
+      getSizeLabel(card.size),
+      card.tier ? `Тир ${card.tier}` : "",
+      card.raceRu || card.race || "",
+      card.pickRate ? `Pick ${card.pickRate}` : "",
+      card.avgPlacement ? `Avg ${card.avgPlacement}` : ""
+    ].filter(Boolean).join(" • ");
+  }
+
   function applySizeTabs() {
     tabButtons.forEach((button) => {
       button.classList.toggle("is-active", button.dataset.size === state.size);
@@ -49,7 +59,16 @@
   }
 
   function matchesFilters(card) {
-    const searchOk = !state.search || normalize(`${card.name} ${getSizeLabel(card.size)}`).includes(normalize(state.search));
+    const searchOk = !state.search || normalize([
+      card.name,
+      card.baseName,
+      card.englishName,
+      card.text,
+      getSizeLabel(card.size),
+      card.tier,
+      card.race,
+      card.raceRu
+    ].filter(Boolean).join(" ")).includes(normalize(state.search));
     const sizeOk = state.size === "ALL" || card.size === state.size;
     return searchOk && sizeOk;
   }
@@ -66,8 +85,8 @@
     lightboxImage.src = safeImageUrl(card.image);
     lightboxImage.alt = card.name;
     lightboxTitle.textContent = card.name;
-    lightboxMeta.textContent = getSizeLabel(card.size);
-    lightboxText.textContent = "Аксессуар для Battlegrounds.";
+    lightboxMeta.textContent = getAccessoryMeta(card);
+    lightboxText.textContent = card.text || "Аксессуар для Battlegrounds.";
     lightboxKicker.textContent = "Аксессуар";
   }
 
@@ -140,6 +159,7 @@
         });
       }
       const index = state.filtered.indexOf(card);
+      tile.title = getAccessoryMeta(card) ? `${card.name} — ${getAccessoryMeta(card)}` : card.name;
       const activate = () => openLightbox(index);
       tile.addEventListener("click", activate);
       tile.addEventListener("keydown", (event) => {

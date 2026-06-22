@@ -52,7 +52,8 @@
 |---|---|---|
 | `battlegrounds-library.js` | HearthstoneJSON | Пул миньонов БГ (фильтрация, нормализация, RU+EN имена), кэш 6 ч, rate-limit 30/мин |
 | `card-art.js` | art.hearthstonejson.com | Прокси арта карт с каскадом фолбэков (bgs → render → enUS → legacy), immutable-кэш, 600/мин |
-| `battlegrounds-spells.js`, `battlegrounds-accessories.js`, `blizzard-metadata.js`, `battlegrounds-card-names.js` | Blizzard Battle.net API | Заклинания, аксессуары, метаданные, EN-названия; OAuth-токен и общий кэш в `_blizzard.js` |
+| `battlegrounds-spells.js`, `blizzard-metadata.js`, `battlegrounds-card-names.js` | Blizzard Battle.net API | Заклинания, метаданные, EN-названия; OAuth-токен и общий кэш в `_blizzard.js` |
+| `battlegrounds-accessories.js` | api.hs-manacost.ru + Blizzard fallback | Малые/большие аксессуары HSReplay с tier, race variants, pick rate и avg placement; Blizzard/local используются как резерв. |
 | `bg-hero-stats.js` | api.hs-manacost.ru (hearthstone-parses) | Статистика героев HSReplay: тир, среднее место, pick rate; кэш 3 ч, rate-limit 30/мин |
 | `bg-minion-stats.js` | api.hs-manacost.ru | Статистика существ HSReplay: impact, винрейт боёв, популярность, число игр |
 | `bg-spell-stats.js` | api.hs-manacost.ru | Статистика заклинаний Firestone: среднее место (с картой и без), impact, число игр |

@@ -30,7 +30,8 @@ const FETCH_TIMEOUT_MS = 4000;
 const SOURCE_TIMEOUT_MS = 7000;
 const PAGE_LIMIT = 4;
 const CACHE_TTL_MS = 60 * 60 * 1000;
-const MAX_PLAUSIBLE_ACCESSORY_COUNT = 140;
+const HSMANACOST_TRINKETS_URL = "https://api.hs-manacost.ru/api/bg/trinkets?active_only=true";
+const MAX_PLAUSIBLE_ACCESSORY_COUNT = 260;
 const cache = { payload: null, expiresAt: 0, locale: null };
 let inFlight = null;
 
@@ -172,6 +173,70 @@ function normalizeCard(card, locale, sourceTag) {
     rarity: card.rarity || null,
     set: card.cardSet?.slug || card.set?.slug || card.cardSetId || null
   };
+}
+
+function normalizeHsManacostTrinket(row, locale) {
+  const cardId = String(row.trinket_id || row.id || "");
+  const size = String(row.trinket_tier || row.type || "").toLowerCase() === "greater" ? "LARGE" : "SMALL";
+  const baseName = String(row.localized_name || row.name || "").trim();
+  const tribeLabel = String(row.tribe_ru || row.tribe || row.race || "").trim();
+  const displayName = tribeLabel ? `${baseName} · ${tribeLabel}` : baseName;
+  const variantKey = String(row.variant_key || `${size}|${cardId}|${row.tribe || ""}|${row.tier || ""}`);
+  const image = buildArtProxyUrl(cardId, locale);
+  return {
+    id: `HSM-${variantKey}`,
+    cardId,
+    dedupeKey: `HSM|${variantKey}`,
+    source: "HSManacost",
+    name: displayName,
+    baseName,
+    englishName: row.name || "",
+    text: stripHtml(row.description || ""),
+    size,
+    image,
+    imageFallback: "",
+    upstreamImage: "",
+    cost: row.cost ?? null,
+    rarity: null,
+    set: "hsreplay-current-trinkets",
+    tier: row.tier || "",
+    race: row.tribe || row.race || "",
+    raceRu: row.tribe_ru || "",
+    pickRate: row.pick_rate || "",
+    avgPlacement: row.avg_placement || "",
+    firstPlace: Array.isArray(row.placement_distribution)
+      ? (row.placement_distribution.find((p) => Number(p.place) === 1)?.rate || "")
+      : "",
+    variantKey
+  };
+}
+
+async function loadFromHsManacost(locale) {
+  const errors = [];
+  try {
+    const response = await fetchWithTimeout(HSMANACOST_TRINKETS_URL, {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "ManacostBG/1.0 (+https://bg.kolodahearthstone.ru)"
+      }
+    }, SOURCE_TIMEOUT_MS);
+    if (!response.ok) {
+      errors.push(`HSManacost: HTTP ${response.status}`);
+      return { trinkets: [], totalScanned: 0, errors, source: HSMANACOST_TRINKETS_URL };
+    }
+    const payload = await response.json();
+    const rows = Array.isArray(payload.trinkets) ? payload.trinkets : [];
+    return {
+      trinkets: rows.map((row) => normalizeHsManacostTrinket(row, locale)),
+      totalScanned: rows.length,
+      errors,
+      source: HSMANACOST_TRINKETS_URL,
+      fetchedAt: payload.fetched_at || null
+    };
+  } catch (error) {
+    errors.push(`HSManacost: ${error.message}`);
+    return { trinkets: [], totalScanned: 0, errors, source: HSMANACOST_TRINKETS_URL };
+  }
 }
 
 let cachedLocalAccessories = null;
@@ -462,13 +527,17 @@ async function loadAccessories(locale, force = false) {
   if (inFlight && inFlight.locale === locale) return inFlight.promise;
 
   const promise = (async () => {
-    const [hswebInternal, hsdbHtml, blizzardDev] = await Promise.all([
+    const [hsManacost, hswebInternal, hsdbHtml, blizzardDev] = await Promise.all([
+      withTimeout("HSManacost", loadFromHsManacost(locale).catch((error) => ({ trinkets: [], source: HSMANACOST_TRINKETS_URL, totalScanned: 0, errors: [`HSManacost: ${error.message}`] })), SOURCE_TIMEOUT_MS),
       withTimeout("HSWebInternal", loadFromHsWebInternal(locale).catch((error) => ({ trinkets: [], source: null, totalScanned: 0, errors: [`HSWebInternal: ${error.message}`] })), SOURCE_TIMEOUT_MS),
       withTimeout("HSDB", loadFromHsDbHtml(locale).catch((error) => ({ trinkets: [], source: null, totalScanned: 0, errors: [`HSDB: ${error.message}`] })), SOURCE_TIMEOUT_MS),
       withTimeout("Blizzard", loadFromBlizzardDev(locale).catch((error) => ({ trinkets: [], totalScanned: 0, errors: [`Blizzard: ${error.message}`] })), SOURCE_TIMEOUT_MS)
     ]);
-    const merged = mergeTrinkets(hswebInternal.trinkets, hsdbHtml.trinkets, blizzardDev.trinkets);
+    const merged = hsManacost.trinkets.length
+      ? hsManacost.trinkets
+      : mergeTrinkets(hswebInternal.trinkets, hsdbHtml.trinkets, blizzardDev.trinkets);
     const dynamicSources = {
+      hsManacost: { count: hsManacost.trinkets.length, scanned: hsManacost.totalScanned, source: hsManacost.source, fetchedAt: hsManacost.fetchedAt, errors: hsManacost.errors || [] },
       hswebInternal: { count: hswebInternal.trinkets.length, scanned: hswebInternal.totalScanned, source: hswebInternal.source, errors: hswebInternal.errors || [] },
       hsdbHtml: { count: hsdbHtml.trinkets.length, scanned: hsdbHtml.totalScanned, source: hsdbHtml.source, errors: hsdbHtml.errors || [] },
       blizzard: { count: blizzardDev.trinkets.length, scanned: blizzardDev.totalScanned, errors: blizzardDev.errors || [] }
@@ -481,7 +550,7 @@ async function loadAccessories(locale, force = false) {
     // Blizzard and the public web endpoints can return the full historical
     // trinket archive. That makes the page look mixed with unrelated / removed
     // cards, so keep the curated current rotation unless upstream is plausible.
-    if (merged.length > MAX_PLAUSIBLE_ACCESSORY_COUNT) {
+    if (!hsManacost.trinkets.length && merged.length > MAX_PLAUSIBLE_ACCESSORY_COUNT) {
       return buildLocalPayload(locale, "Local curated accessories (upstream returned legacy archive)", {
         ...dynamicSources,
         rejectedUpstream: {
@@ -498,6 +567,7 @@ async function loadAccessories(locale, force = false) {
       return safeLocaleCompare(a.name, b.name, locale);
     });
     const sourceLabel = [
+      hsManacost.trinkets.length && "HSManacost",
       hswebInternal.trinkets.length && "HSWebInternal",
       hsdbHtml.trinkets.length && "HearthstoneDB",
       blizzardDev.trinkets.length && "Blizzard"
