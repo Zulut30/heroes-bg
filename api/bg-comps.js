@@ -30,27 +30,50 @@ async function fetchJsonWithTimeout(url) {
   }
 }
 
+function normalizeCard(card, role) {
+  const id = String(card?.card_id || card?.id || "").trim();
+  if (!id) {
+    return null;
+  }
+  return {
+    id,
+    dbfId: Number(card?.dbfId) || null,
+    name: String(card?.name || "").trim(),
+    count: Number(card?.count) || 1,
+    role
+  };
+}
+
+function normalizeCardGroup(list, role) {
+  const cards = [];
+  const seen = new Set();
+  (Array.isArray(list) ? list : []).forEach((card) => {
+    const normalized = normalizeCard(card, role);
+    if (!normalized || seen.has(normalized.id)) {
+      return;
+    }
+    seen.add(normalized.id);
+    cards.push(normalized);
+  });
+  return cards;
+}
+
 function normalizeCards(comp) {
   const cards = [];
   const seen = new Set();
   const groups = [
-    ["CORE", Array.isArray(comp?.main_cards) ? comp.main_cards : []],
-    ["ADDON", Array.isArray(comp?.additional_cards) ? comp.additional_cards : []]
+    ["CORE", comp?.main_cards || comp?.core_cards],
+    ["ADDON", comp?.additional_cards || comp?.addon_cards],
+    ["COMMIT", comp?.when_to_commit_cards],
+    ["ENABLER", comp?.enabler_cards]
   ];
   groups.forEach(([role, list]) => {
-    list.forEach((card) => {
-      const id = String(card?.card_id || card?.id || "").trim();
-      if (!id || seen.has(id)) {
+    normalizeCardGroup(list, role).forEach((card) => {
+      if (seen.has(card.id)) {
         return;
       }
-      seen.add(id);
-      cards.push({
-        id,
-        dbfId: Number(card?.dbfId) || null,
-        name: String(card?.name || "").trim(),
-        count: Number(card?.count) || 1,
-        role
-      });
+      seen.add(card.id);
+      cards.push(card);
     });
   });
   return cards;
@@ -58,19 +81,9 @@ function normalizeCards(comp) {
 
 const DIFFICULTY_RU = { Easy: "Лёгкая", Medium: "Средняя", Hard: "Сложная" };
 
-// У HSReplay name/title часто либо общие («Beasts» × 3), либо склеены с описанием;
-// slug со страницы comps всегда чистый и осмысленный («Beasts Leviathan»).
-// Описание заканчивается мусорным хвостом вида «Medium651561066» — отрезаем его.
-function parseHsreplayMeta(comp) {
-  let description = String(comp?.description || "").trim();
-  let difficulty = "";
-  const match = description.match(/(Easy|Medium|Hard)\d*$/);
-  if (match) {
-    difficulty = DIFFICULTY_RU[match[1]] || "";
-    description = description.slice(0, match.index).trim();
-  }
-  const title = String(comp?.slug || "").trim() || String(comp?.name || comp?.title || "").trim();
-  return { title, difficulty, description };
+function localizeDifficulty(value) {
+  const difficulty = String(value || "").trim();
+  return DIFFICULTY_RU[difficulty] || difficulty;
 }
 
 function normalizeComp(comp, label) {
@@ -78,15 +91,26 @@ function normalizeComp(comp, label) {
   if (!cards.length) {
     return null;
   }
-  const hsreplayMeta = label === "HSReplay" ? parseHsreplayMeta(comp) : null;
+  const coreCards = normalizeCardGroup(comp?.main_cards || comp?.core_cards, "CORE");
+  const additionalCards = normalizeCardGroup(comp?.additional_cards || comp?.addon_cards, "ADDON");
+  const whenToCommitCards = normalizeCardGroup(comp?.when_to_commit_cards, "COMMIT");
+  const enablerCards = normalizeCardGroup(comp?.enabler_cards, "ENABLER");
+  const title = String(comp?.strategy_title || comp?.title || comp?.slug || comp?.name || "").trim();
+  const description = String(comp?.how_to_play || comp?.description || "").trim();
   return {
     key: String(comp?.id || `${label}-${comp?.comp_id}`),
     source: label,
-    title: hsreplayMeta ? hsreplayMeta.title : String(comp?.title || comp?.name || "").trim(),
-    description: (hsreplayMeta ? hsreplayMeta.description : String(comp?.description || "").trim()).slice(0, 300),
+    title,
+    description: description.slice(0, 500),
     tier: String(comp?.tier || "").trim(),
-    difficulty: hsreplayMeta ? hsreplayMeta.difficulty : String(comp?.difficulty_ru || comp?.difficulty || "").trim(),
+    difficulty: String(comp?.difficulty_ru || localizeDifficulty(comp?.difficulty)).trim(),
     avgPlacement: comp?.avg_placement != null ? String(comp.avg_placement) : "",
+    whenToCommit: String(comp?.when_to_commit || "").trim(),
+    sourceUrl: String(comp?.url || "").trim(),
+    coreCards,
+    additionalCards,
+    whenToCommitCards,
+    enablerCards,
     cards
   };
 }
