@@ -3,23 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Тир-лист заклинаний — Manacost Battleground</title>
-  <meta name="description" content="Тир-лист заклинаний таверны Hearthstone Battlegrounds по статистике Firestone: среднее место с картой и без неё, галерея по тирам S/A/B/C/D со скачиванием и подробная таблица.">
+  <title>Тир-лист аксессуаров — Manacost Battleground</title>
+  <meta name="description" content="Тир-лист малых и больших аксессуаров Hearthstone Battlegrounds по статистике HSReplay: среднее место, пикрейт, галерея по тирам и таблица.">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#dbc07a">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Manacost Battleground">
-  <meta property="og:title" content="Тир-лист заклинаний — Manacost Battleground">
-  <meta property="og:description" content="Заклинания таверны по тирам с живой статистикой Firestone.">
+  <meta property="og:title" content="Тир-лист аксессуаров — Manacost Battleground">
+  <meta property="og:description" content="Малые и большие аксессуары Полей сражений по среднему месту HSReplay.">
   <meta property="og:image" content="./wallpaper.jpg">
   <meta property="og:locale" content="ru_RU">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Тир-лист заклинаний — Manacost Battleground">
-  <meta name="twitter:description" content="Заклинания таверны по тирам с живой статистикой Firestone.">
+  <meta name="twitter:title" content="Тир-лист аксессуаров — Manacost Battleground">
+  <meta name="twitter:description" content="Аксессуары Полей сражений по тирам с живой статистикой HSReplay.">
   <meta name="twitter:image" content="./wallpaper.jpg">
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="preconnect" href="https://art.hearthstonejson.com" crossorigin>
+  <link rel="preconnect" href="https://d15f34w2p8l1cc.cloudfront.net" crossorigin>
   <link rel="preload" as="font" type="font/otf" href="./font.otf" crossorigin>
   <link rel="stylesheet" href="./styles.css">
 </head>
@@ -63,11 +63,11 @@
               <span class="nav-dropdown-item-title">Тир-лист существ</span>
               <span class="nav-dropdown-item-note">Impact и винрейт боёв (HSReplay)</span>
             </a>
-            <a class="nav-dropdown-item is-active" href="./spell-tiers.html">
+            <a class="nav-dropdown-item" href="./spell-tiers.html">
               <span class="nav-dropdown-item-title">Тир-лист заклинаний</span>
               <span class="nav-dropdown-item-note">Среднее место (Firestone)</span>
             </a>
-            <a class="nav-dropdown-item" href="./trinket-tiers.html">
+            <a class="nav-dropdown-item is-active" href="./trinket-tiers.html">
               <span class="nav-dropdown-item-title">Тир-лист аксессуаров</span>
               <span class="nav-dropdown-item-note">Малые и большие аксессуары (HSReplay)</span>
             </a>
@@ -86,8 +86,8 @@
       <section class="hero-tiers-intro">
         <div>
           <p class="eyebrow">Живая статистика</p>
-          <h1 class="panel-title">Тир-лист заклинаний</h1>
-          <p id="card-tiers-status" class="library-status">Загружаю статистику заклинаний...</p>
+          <h1 class="panel-title">Тир-лист аксессуаров</h1>
+          <p id="card-tiers-status" class="library-status">Загружаю статистику аксессуаров...</p>
           <div id="card-tiers-view-toggle" class="view-toggle" role="tablist" aria-label="Вид списка">
             <button class="chip" type="button" data-view="gallery">Галерея</button>
             <button class="chip" type="button" data-view="table">Таблица</button>
@@ -105,19 +105,17 @@
       </section>
 
       <section id="card-tiers-filters" class="tier-filters-panel" hidden></section>
-
       <section id="card-tiers" class="tiers" aria-live="polite"></section>
 
       <section id="card-table-wrap" class="stats-table-panel" hidden>
         <label class="control-field stats-table-search">
           <span class="control-label">Поиск по названию (RU / EN)</span>
-          <input id="card-table-search" class="text-input" type="search" placeholder="Например, Укрепление или Fortify">
+          <input id="card-table-search" class="text-input" type="search" placeholder="Например, Шкатулка или Jewelry">
         </label>
         <div id="card-table" class="stats-table-scroll"></div>
       </section>
     </main>
   </div>
-
 
   <div id="lightbox" class="lightbox" hidden>
     <div class="lightbox-backdrop" data-close-lightbox="true"></div>
@@ -127,7 +125,7 @@
       <div class="lightbox-body">
         <img id="lightbox-image" class="lightbox-image" alt="">
         <div class="lightbox-copy">
-          <p id="lightbox-kicker" class="eyebrow">Battlegrounds Card</p>
+          <p id="lightbox-kicker" class="eyebrow">Battlegrounds Trinket</p>
           <h2 id="lightbox-title"></h2>
           <p id="lightbox-meta" class="lightbox-meta"></p>
           <p id="lightbox-text" class="lightbox-text"></p>
@@ -158,27 +156,28 @@
   </template>
 
   <script src="./shared.js" defer></script>
-  <script src="./spell-tiers-data.js" defer></script>
-  <script src="./card-tiers.js" defer></script>
+  <script src="./trinket-tiers-data.js" defer></script>
+  <script src="./card-tiers.js?v=trinkets-api-tier-20260622-1314" defer></script>
   <script defer>
     window.addEventListener("DOMContentLoaded", () => {
       const TIER_RANK = { S: 0, A: 1, B: 2, C: 3, D: 4 };
+      const typeLabels = { SMALL: "Малый", LARGE: "Большой" };
       window.CardTiers.init({
-        pageKey: "spell-tiers",
+        pageKey: "trinket-tiers",
         defaultColumns: 6,
-        fileBase: "spell-tier",
-        apiUrl: "./api/bg-spell-stats",
-        itemsField: "spells",
-        static: window.spellTierStatic,
-        liveLabel: "живая статистика Firestone",
-        statusNote: "тиры рассчитаны по среднему месту",
-        countForms: ["заклинание", "заклинания", "заклинаний"],
+        fileBase: "trinket-tier",
+        apiUrl: "./api/bg-trinket-stats",
+        itemsField: "trinkets",
+        static: window.trinketTierStatic,
+        liveLabel: "живая статистика HSReplay",
+        statusNote: "тиры получены из HSReplay",
+        countForms: ["аксессуар", "аксессуара", "аксессуаров"],
         tierTitles: {
-          S: "Лучший выбор",
-          A: "Сильные заклинания",
+          S: "Лучшие аксессуары",
+          A: "Сильные аксессуары",
           B: "Крепкая середина",
           C: "Ситуативные",
-          D: "Слабые заклинания"
+          D: "Слабые аксессуары"
         },
         metric: {
           label: "Среднее место",
@@ -186,18 +185,20 @@
           value: (item) => item.avgPlacement,
           format: (value) => window.CardTiers.formatNumber(value, 2)
         },
+        useItemTier: true,
         quantiles: { S: 0.08, A: 0.25, B: 0.55, C: 0.85 },
-        defaultSort: { key: "avg", dir: "asc" },
-        filters: { tavern: true },
-        lightboxMeta: (i) => `Среднее место ${window.CardTiers.formatNumber(i.avgPlacement, 2)} · без карты ${window.CardTiers.formatNumber(i.avgPlacementOther, 2)} · impact ${window.CardTiers.formatNumber(i.impact, 2)}`,
+        defaultSort: { key: "avgPlacement", dir: "asc" },
+        filters: { trinketSize: true },
+        imageUrl: (item) => item.image || item.imageFallback || "",
+        lightboxKicker: (item) => `${item.tier || "—"}-тир · ${item.typeLabel || typeLabels[item.size] || "Аксессуар"}${item.cost != null ? ` · стоимость ${item.cost}` : ""}`,
+        lightboxMeta: (i) => `Среднее место ${window.CardTiers.formatNumber(i.avgPlacement, 2)} · пикрейт ${i.pickRate || "—"}`,
         columns: [
-          { key: "name", label: "Заклинание", value: (i) => i.ruName || i.name, sort: (i) => i.ruName || i.name, defaultDir: "asc" },
+          { key: "name", label: "Аксессуар", value: (i) => i.ruName || i.localizedName || i.name, sort: (i) => i.ruName || i.localizedName || i.name, defaultDir: "asc" },
           { key: "tier", label: "Тир", value: (i) => i.tier || "—", sort: (i) => (i.tier ? TIER_RANK[i.tier] : 99), defaultDir: "asc" },
-          { key: "tavernTier", label: "Таверна", numeric: true, value: (i) => i.tavernTier || "—", sort: (i) => i.tavernTier || null, defaultDir: "asc" },
-          { key: "avg", label: "Среднее место", numeric: true, value: (i) => window.CardTiers.formatNumber(i.avgPlacement, 2), sort: (i) => i.avgPlacement, defaultDir: "asc" },
-          { key: "avgOther", label: "Место без карты", numeric: true, value: (i) => window.CardTiers.formatNumber(i.avgPlacementOther, 2), sort: (i) => i.avgPlacementOther, defaultDir: "asc" },
-          { key: "impact", label: "Impact", numeric: true, value: (i) => window.CardTiers.formatNumber(i.impact, 2), sort: (i) => i.impact, defaultDir: "desc" },
-          { key: "played", label: "Сыграно", numeric: true, value: (i) => window.CardTiers.formatCount(i.totalPlayed), sort: (i) => i.totalPlayed, defaultDir: "desc" }
+          { key: "size", label: "Тип", value: (i) => i.typeLabel || typeLabels[i.size] || "—", sort: (i) => i.size === "SMALL" ? 0 : 1, defaultDir: "asc" },
+          { key: "cost", label: "Стоимость", numeric: true, value: (i) => i.cost ?? "—", sort: (i) => i.cost, defaultDir: "asc" },
+          { key: "avgPlacement", label: "Среднее место", numeric: true, value: (i) => window.CardTiers.formatNumber(i.avgPlacement, 2), sort: (i) => i.avgPlacement, defaultDir: "asc" },
+          { key: "pickRate", label: "Пикрейт", numeric: true, value: (i) => i.pickRate || "—", sort: (i) => Number.parseFloat(i.pickRate) || null, defaultDir: "desc" }
         ]
       });
     });

@@ -29,6 +29,33 @@
     return `/api/card-art?id=${encodeURIComponent(id)}&locale=ruRU&size=${encodeURIComponent(size)}`;
   }
 
+  function cardImageUrl(config, item, size = "256x", preferProxy = false) {
+    if (config && config.imageUrl) {
+      const custom = config.imageUrl(item, size, preferProxy);
+      if (custom) return custom;
+    }
+    return preferProxy ? proxyArtUrl(item.id, size) : directArtUrl(item.id, size);
+  }
+
+  function attachImageFallback(img, item, size = "256x", preferProxy = false) {
+    img.addEventListener("error", () => {
+      if (img.dataset.fallback === "custom" && item.imageFallback) {
+        img.dataset.fallback = "proxy";
+        img.src = item.imageFallback;
+        return;
+      }
+      if (!img.dataset.fallback || img.dataset.fallback === "custom") {
+        img.dataset.fallback = "proxy";
+        img.src = proxyArtUrl(item.id, size);
+        return;
+      }
+      if (!preferProxy && img.dataset.fallback === "proxy") {
+        img.dataset.fallback = "direct";
+        img.src = directArtUrl(item.id, size);
+      }
+    }, { once: false });
+  }
+
   function formatNumber(value, digits = 2) {
     if (value === null || value === undefined || Number.isNaN(Number(value))) {
       return "—";
@@ -113,6 +140,7 @@
       search: "",
       filterRace: "ALL",
       filterTavern: "ALL",
+      filterTrinketSize: "ALL",
       galleryItems: [],
       lightboxIndex: -1
     };
@@ -123,11 +151,12 @@
       const tavernOk = state.filterTavern === "ALL" || String(item.tavernTier || "") === state.filterTavern;
       const raceOk = state.filterRace === "ALL"
         || ((item.races && item.races.length ? item.races : ["NONE"]).includes(state.filterRace));
-      return tavernOk && raceOk;
+      const trinketSizeOk = state.filterTrinketSize === "ALL" || String(item.size || "") === state.filterTrinketSize;
+      return tavernOk && raceOk && trinketSizeOk;
     }
 
     function filtersActive() {
-      return state.filterRace !== "ALL" || state.filterTavern !== "ALL";
+      return state.filterRace !== "ALL" || state.filterTavern !== "ALL" || state.filterTrinketSize !== "ALL";
     }
 
     function loadColumns() {
@@ -233,7 +262,7 @@
           return {
             ...item,
             races: extra?.races || item.races || [],
-            ruName: nameByDbfId[String(item.dbfId)] || extra?.name || item.name || "",
+            ruName: nameByDbfId[String(item.dbfId)] || item.localizedName || extra?.name || item.name || "",
             metricValue: Number.isFinite(Number(metricValue)) && metricValue !== null ? Number(metricValue) : null,
             metricLabel: config.metric.format(metricValue)
           };
@@ -241,6 +270,31 @@
     }
 
     function deriveSections(items) {
+      if (config.useItemTier) {
+        const byTier = new Map(TIER_ORDER.map((tier) => [tier, []]));
+        items.forEach((item) => {
+          const tier = String(item.tier || "").trim().toUpperCase();
+          if (byTier.has(tier)) {
+            item.tier = tier;
+            byTier.get(tier).push(item);
+          }
+        });
+        const direction = config.metric.better === "asc" ? 1 : -1;
+        byTier.forEach((tierItems) => {
+          tierItems.sort((left, right) => {
+            const leftValue = left.metricValue;
+            const rightValue = right.metricValue;
+            if (leftValue === null && rightValue === null) return 0;
+            if (leftValue === null) return 1;
+            if (rightValue === null) return -1;
+            return direction * (leftValue - rightValue);
+          });
+        });
+        return TIER_ORDER
+          .filter((tier) => byTier.get(tier).length)
+          .map((tier) => ({ tier, items: byTier.get(tier) }));
+      }
+
       const rated = items.filter((item) => item.metricValue !== null);
       const direction = config.metric.better === "asc" ? 1 : -1;
       rated.sort((left, right) => direction * (left.metricValue - right.metricValue));
@@ -358,17 +412,32 @@
         block.append(row);
         filtersPanelEl.append(block);
       }
+
+      if (FILTERS.trinketSize) {
+        const block = document.createElement("div");
+        block.className = "filter-block";
+        block.innerHTML = '<div class="filter-heading-row"><h3 class="filter-heading">Тип аксессуара</h3></div>';
+        const row = document.createElement("div");
+        row.className = "chip-row";
+        [
+          { value: "ALL", label: "Все аксессуары" },
+          { value: "SMALL", label: "Малые" },
+          { value: "LARGE", label: "Большие" }
+        ].forEach((option) => {
+          row.append(createFilterChip(option.label, state.filterTrinketSize === option.value, () => {
+            state.filterTrinketSize = option.value;
+            onFiltersChanged();
+          }));
+        });
+        block.append(row);
+        filtersPanelEl.append(block);
+      }
     }
 
     // --- Лайтбокс ---
 
     function lightboxArtFallback(img, item) {
-      img.addEventListener("error", () => {
-        if (!img.dataset.fallback) {
-          img.dataset.fallback = "1";
-          img.src = proxyArtUrl(item.id, "512x");
-        }
-      });
+      attachImageFallback(img, item, "512x", true);
     }
 
     function openLightbox(index) {
@@ -378,13 +447,18 @@
       state.lightboxIndex = (index + state.galleryItems.length) % state.galleryItems.length;
       const image = lightboxEl.querySelector("#lightbox-image");
       image.dataset.fallback = "";
-      image.src = directArtUrl(item.id, "512x");
+      if (item.image) {
+        image.dataset.fallback = "custom";
+      }
+      image.src = cardImageUrl(config, item, "512x", true);
       image.alt = item.ruName;
       lightboxArtFallback(image, item);
       lightboxEl.querySelector("#lightbox-title").textContent = item.ruName;
-      lightboxEl.querySelector("#lightbox-kicker").textContent = item.tier ? `${item.tier}-тир · таверна ${item.tavernTier || "?"}` : `Таверна ${item.tavernTier || "?"}`;
+      lightboxEl.querySelector("#lightbox-kicker").textContent = config.lightboxKicker
+        ? config.lightboxKicker(item)
+        : (item.tier ? `${item.tier}-тир · таверна ${item.tavernTier || "?"}` : `Таверна ${item.tavernTier || "?"}`);
       lightboxEl.querySelector("#lightbox-meta").textContent = config.lightboxMeta ? config.lightboxMeta(item) : "";
-      lightboxEl.querySelector("#lightbox-text").textContent = item.name && item.name !== item.ruName ? item.name : "";
+      lightboxEl.querySelector("#lightbox-text").textContent = item.text || (item.name && item.name !== item.ruName ? item.name : "");
       lightboxEl.hidden = false;
       document.body.style.overflow = "hidden";
     }
@@ -424,7 +498,9 @@
       tile.className = "hero-tile card-render-tile";
       tile.tabIndex = 0;
       tile.setAttribute("role", "button");
-      tile.title = `${item.ruName}${item.name && item.name !== item.ruName ? ` (${item.name})` : ""} — ${config.metric.label}: ${item.metricLabel} · таверна ${item.tavernTier || "?"}`;
+      tile.title = config.tileTitle
+        ? config.tileTitle(item)
+        : `${item.ruName}${item.name && item.name !== item.ruName ? ` (${item.name})` : ""} — ${config.metric.label}: ${item.metricLabel}${item.tavernTier ? ` · таверна ${item.tavernTier}` : ""}`;
       tile.addEventListener("click", () => openLightbox(galleryIndex));
       tile.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -436,16 +512,14 @@
       const media = document.createElement("div");
       media.className = "hero-tile-media card-render-media";
       const img = document.createElement("img");
-      img.src = directArtUrl(item.id, "256x");
+      if (item.image) {
+        img.dataset.fallback = "custom";
+      }
+      img.src = cardImageUrl(config, item, "256x", false);
       img.alt = item.ruName;
       img.loading = "lazy";
       img.decoding = "async";
-      img.addEventListener("error", () => {
-        if (!img.dataset.fallback) {
-          img.dataset.fallback = "1";
-          img.src = proxyArtUrl(item.id, "256x");
-        }
-      }, { once: false });
+      attachImageFallback(img, item, "256x", false);
       media.append(img);
 
       const place = document.createElement("figcaption");
@@ -628,9 +702,12 @@
 
     async function loadEntryImage(item) {
       try {
-        return await window.Shared.loadImageFromSource(proxyArtUrl(item.id, "512x"));
+        return await window.Shared.loadImageFromSource(cardImageUrl(config, item, "512x", true));
       } catch (error) {
         try {
+          if (item.imageFallback) {
+            return await window.Shared.loadImageFromSource(item.imageFallback);
+          }
           return await window.Shared.loadImageFromSource(directArtUrl(item.id, "512x"));
         } catch (secondError) {
           console.warn(`Не удалось загрузить карту ${item.ruName}:`, secondError);
@@ -851,14 +928,12 @@
       const tip = ensureTooltip();
       tip.innerHTML = "";
       const img = document.createElement("img");
-      img.src = directArtUrl(item.id, "256x");
+      if (item.image) {
+        img.dataset.fallback = "custom";
+      }
+      img.src = cardImageUrl(config, item, "256x", false);
       img.alt = item.ruName;
-      img.addEventListener("error", () => {
-        if (!img.dataset.fallback) {
-          img.dataset.fallback = "1";
-          img.src = proxyArtUrl(item.id, "256x");
-        }
-      });
+      attachImageFallback(img, item, "256x", false);
       tip.append(img);
       tip.hidden = false;
       positionTooltip(clientX, clientY);

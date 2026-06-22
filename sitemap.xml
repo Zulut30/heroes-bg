@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://heroes-bg.vercel.app/index.html</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
-  <url><loc>https://heroes-bg.vercel.app/tier-list.html</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
-  <url><loc>https://heroes-bg.vercel.app/minion-tiers.html</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
-  <url><loc>https://heroes-bg.vercel.app/spell-tiers.html</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
-  <url><loc>https://heroes-bg.vercel.app/strategy-builder.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://heroes-bg.vercel.app/hero-tier-builder.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://heroes-bg.vercel.app/library.html</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://heroes-bg.vercel.app/blizzard-spells.html</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://heroes-bg.vercel.app/accessories.html</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://bg.kolodahearthstone.ru/index.html</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://bg.kolodahearthstone.ru/tier-list.html</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://bg.kolodahearthstone.ru/minion-tiers.html</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://bg.kolodahearthstone.ru/spell-tiers.html</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://bg.kolodahearthstone.ru/trinket-tiers.html</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://bg.kolodahearthstone.ru/strategy-tiers.html</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://bg.kolodahearthstone.ru/strategy-builder.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://bg.kolodahearthstone.ru/hero-tier-builder.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://bg.kolodahearthstone.ru/library.html</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://bg.kolodahearthstone.ru/blizzard-spells.html</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://bg.kolodahearthstone.ru/accessories.html</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
 </urlset>
