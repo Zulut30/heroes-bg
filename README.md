@@ -33,6 +33,8 @@ GET https://bg.kolodahearthstone.ru/api/tier-lists
 GET https://bg.kolodahearthstone.ru/api/tier-lists?list=strategies&source=hsreplay&tier=S
 GET https://bg.kolodahearthstone.ru/api/tier-lists?list=strategies&source=firestone&tier=A
 GET https://bg.kolodahearthstone.ru/api/tier-lists?list=trinkets&tier=S
+GET https://bg.kolodahearthstone.ru/api/tier-lists?list=minions&tier=S&background=wallpaper1
+GET https://bg.kolodahearthstone.ru/tier-list.html?export=tier&tier=S&background=wallpaper2&format=png
 ```
 
 Supported query params:
@@ -40,6 +42,8 @@ Supported query params:
 - `list`: `heroes`, `minions`, `spells`, `trinkets`, `strategies`, or `all`
 - `tier`: `S`, `A`, `B`, `C`, or `D`
 - `source`: `firestone` or `hsreplay` for strategy tier lists
+- `background`: `transparent`, `wallpaper`, `wallpaper1`, `wallpaper2`, or `wallpaper3` for hero/minion image exports
+- `format`: `png` or `webp` for page export links returned in `exports`
 
 Strategy responses include image URLs for each card:
 

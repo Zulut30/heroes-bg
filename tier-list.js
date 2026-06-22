@@ -569,14 +569,51 @@
     );
   }
 
+  function applyExportParams() {
+    const params = new URLSearchParams(window.location.search);
+    const background = params.get("background");
+    if (BACKGROUND_VALUES.has(background)) {
+      state.backgroundMode = background;
+      state.tierBackgrounds = {};
+      persistBackgrounds();
+      if (typeof globalPickerUpdate === "function") {
+        globalPickerUpdate();
+      }
+    }
+  }
+
+  async function runLinkedExport() {
+    const params = new URLSearchParams(window.location.search);
+    const exportMode = params.get("export");
+    if (!exportMode) return;
+
+    const format = params.get("format") === "webp" ? "webp" : "png";
+    await new Promise((resolve) => window.setTimeout(resolve, 250));
+
+    if (exportMode === "all") {
+      await exportAllTiers(format);
+      return;
+    }
+
+    const tier = String(params.get("tier") || "S").toUpperCase();
+    const section = state.sections.find((entry) => entry.tier === tier);
+    if (section) {
+      await exportTier(section, format);
+    }
+  }
+
   async function bootstrap() {
     renderGlobalBackgroundPicker();
     try {
       const result = await loadHeroStats();
       const heroes = result.heroes.map(normalizeHero);
       state.sections = buildSections(heroes);
+      applyExportParams();
       renderStatus(result, heroes.length);
       renderTiers();
+      runLinkedExport().catch((error) => {
+        console.error("Не удалось скачать тир-лист по ссылке API.", error);
+      });
     } catch (error) {
       console.error(error);
       statusEl.textContent = "Не удалось загрузить тир-лист героев.";

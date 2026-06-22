@@ -11,7 +11,7 @@ https://bg.kolodahearthstone.ru/api/tier-lists
 Use one endpoint for all public tier-list data.
 
 ```text
-GET /api/tier-lists?list={list}&tier={tier}&source={source}
+GET /api/tier-lists?list={list}&tier={tier}&source={source}&background={background}
 ```
 
 ### Parameters
@@ -21,6 +21,9 @@ GET /api/tier-lists?list={list}&tier={tier}&source={source}
 | `list` | `heroes`, `minions`, `spells`, `trinkets`, `strategies`, `all` | Omit it to get the API catalog. |
 | `tier` | `S`, `A`, `B`, `C`, `D` | Optional. If omitted, the response contains all tiers. |
 | `source` | `firestone`, `hsreplay` | Used by `strategies`. Other lists use their default source. |
+| `background` | `transparent`, `wallpaper`, `wallpaper1`, `wallpaper2`, `wallpaper3` | Used by hero/minion export links. |
+| `columns` | `2`-`10` | Used by minion export links. |
+| `format` | `png`, `webp` | Used by page export links returned in `exports`. |
 
 Aliases are supported:
 
@@ -49,6 +52,24 @@ A-tier accessories/trinkets:
 https://bg.kolodahearthstone.ru/api/tier-lists?list=trinkets&tier=A
 ```
 
+S-tier minions with selected background and image export links:
+
+```text
+https://bg.kolodahearthstone.ru/api/tier-lists?list=minions&tier=S&background=wallpaper1&columns=6
+```
+
+Download hero S-tier as PNG using the existing page JS engine:
+
+```text
+https://bg.kolodahearthstone.ru/tier-list.html?export=tier&tier=S&background=wallpaper2&format=png
+```
+
+Download minion S-tier as WebP using the existing page JS engine:
+
+```text
+https://bg.kolodahearthstone.ru/minion-tiers.html?export=tier&tier=S&background=wallpaper1&format=webp&columns=6
+```
+
 All default tier lists:
 
 ```text
@@ -70,6 +91,16 @@ With `tier`:
   "tier": "S",
   "availableTiers": ["S", "A", "B", "C", "D"],
   "count": 3,
+  "background": {
+    "key": "wallpaper1",
+    "label": "Фон 2",
+    "image": "https://bg.kolodahearthstone.ru/wallpaper1.webp"
+  },
+  "exports": {
+    "engine": "card-tiers.js",
+    "png": "https://bg.kolodahearthstone.ru/minion-tiers.html?export=tier&background=wallpaper1&format=png&tier=S&columns=6",
+    "webp": "https://bg.kolodahearthstone.ru/minion-tiers.html?export=tier&background=wallpaper1&format=webp&tier=S&columns=6"
+  },
   "items": []
 }
 ```
@@ -106,6 +137,8 @@ The public response includes image URLs where available:
 - `spells`: `image`, `image256`
 - `trinkets`: `image`, `imageFallback`
 - `strategies`: `cards[].frame`, `cards[].card`, `cards[].fallback`
+
+Hero and minion tier-list responses also include `exports.png` and `exports.webp`. These URLs open the relevant tier-list page with query params, then the existing browser/canvas JS engine downloads the image with the requested `background`.
 
 Strategy card image fields:
 

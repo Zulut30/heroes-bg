@@ -1109,6 +1109,50 @@
       });
     }
 
+    function applyExportParams() {
+      const params = new URLSearchParams(window.location.search);
+      const background = params.get("background");
+      if (BACKGROUND_VALUES.has(background)) {
+        state.backgroundMode = background;
+        state.tierBackgrounds = {};
+        persistBackgrounds();
+        if (typeof globalPickerUpdate === "function") {
+          globalPickerUpdate();
+        }
+      }
+
+      const columns = Number.parseInt(params.get("columns"), 10);
+      if (Number.isFinite(columns)) {
+        state.columns = Math.min(COLUMNS_MAX, Math.max(COLUMNS_MIN, columns));
+        applyColumns();
+        try {
+          window.localStorage.setItem(COLUMNS_STORAGE_KEY, String(state.columns));
+        } catch (error) {
+          // ignore
+        }
+      }
+    }
+
+    async function runLinkedExport() {
+      const params = new URLSearchParams(window.location.search);
+      const exportMode = params.get("export");
+      if (!exportMode) return;
+
+      const format = params.get("format") === "webp" ? "webp" : "png";
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+
+      if (exportMode === "all") {
+        await exportAllTiers(format);
+        return;
+      }
+
+      const tier = String(params.get("tier") || "S").toUpperCase();
+      const section = state.sections.find((entry) => entry.tier === tier);
+      if (section) {
+        await exportTier(section, format);
+      }
+    }
+
     async function bootstrap() {
       globalPickerUpdate = buildBackgroundPicker(
         backgroundPickerEl,
@@ -1134,10 +1178,14 @@
         ]);
         state.items = prepareItems(result.items, enrichByDbfId);
         state.sections = deriveSections(state.items);
+        applyExportParams();
         renderStatus(result);
         renderFilters();
         renderTiers();
         applyView();
+        runLinkedExport().catch((error) => {
+          console.error("Не удалось скачать тир-лист по ссылке API.", error);
+        });
       } catch (error) {
         console.error(error);
         statusEl.textContent = "Не удалось загрузить статистику.";

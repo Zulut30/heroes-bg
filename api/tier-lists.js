@@ -2,6 +2,13 @@ const path = require("path");
 const { sendJson, rateLimit } = require("./_blizzard");
 
 const TIER_ORDER = ["S", "A", "B", "C", "D"];
+const BACKGROUNDS = {
+  transparent: { label: "Без фона", file: "" },
+  wallpaper: { label: "Фон 1", file: "wallpaper.webp" },
+  wallpaper1: { label: "Фон 2", file: "wallpaper1.webp" },
+  wallpaper2: { label: "Фон 3", file: "wallpaper2.webp" },
+  wallpaper3: { label: "Фон 4", file: "wallpaper3.webp" }
+};
 const LISTS = {
   heroes: {
     label: "Тир-лист героев",
@@ -85,6 +92,19 @@ function parseList(value) {
 function parseSource(value, fallback = "firestone") {
   const source = String(value || fallback).trim().toLowerCase();
   return SOURCE_ALIASES[source] || fallback;
+}
+
+function parseBackground(value) {
+  const background = String(value || "transparent").trim().toLowerCase();
+  return Object.prototype.hasOwnProperty.call(BACKGROUNDS, background) ? background : "transparent";
+}
+
+function parseColumns(value, fallback = 6) {
+  const columns = Number.parseInt(value, 10);
+  if (!Number.isFinite(columns)) {
+    return fallback;
+  }
+  return Math.max(2, Math.min(10, columns));
 }
 
 function numberOrNull(value) {
@@ -250,6 +270,8 @@ async function buildList(listKey, options = {}, req = null) {
     .map((item) => withImages(item, listKey, req));
   const tiers = groupByTier(items);
   const tier = parseTier(options.tier);
+  const background = parseBackground(options.background);
+  const columns = parseColumns(options.columns, 6);
 
   const result = {
     list: listKey,
@@ -262,6 +284,40 @@ async function buildList(listKey, options = {}, req = null) {
     availableTiers: TIER_ORDER,
     count: tier ? tiers[tier].length : items.length
   };
+
+  if (listKey === "heroes" || listKey === "minions") {
+    const page = listKey === "heroes" ? "tier-list.html" : "minion-tiers.html";
+    const exportParams = new URLSearchParams({
+      export: tier ? "tier" : "all",
+      background,
+      format: "png"
+    });
+    if (tier) {
+      exportParams.set("tier", tier);
+    }
+    if (listKey === "minions") {
+      exportParams.set("columns", String(columns));
+    }
+
+    const webpParams = new URLSearchParams(exportParams);
+    webpParams.set("format", "webp");
+
+    result.background = {
+      key: background,
+      label: BACKGROUNDS[background].label,
+      image: BACKGROUNDS[background].file ? absoluteUrl(req, `/${BACKGROUNDS[background].file}`) : null
+    };
+    result.availableBackgrounds = Object.entries(BACKGROUNDS).map(([key, entry]) => ({
+      key,
+      label: entry.label,
+      image: entry.file ? absoluteUrl(req, `/${entry.file}`) : null
+    }));
+    result.exports = {
+      engine: listKey === "heroes" ? "tier-list.js" : "card-tiers.js",
+      png: `${requestOrigin(req)}/${page}?${exportParams.toString()}`,
+      webp: `${requestOrigin(req)}/${page}?${webpParams.toString()}`
+    };
+  }
 
   if (tier) {
     result.items = tiers[tier];
@@ -286,16 +342,23 @@ function catalog(req) {
       itemField: config.field
     })),
     tiers: TIER_ORDER,
+    backgrounds: Object.entries(BACKGROUNDS).map(([key, entry]) => ({
+      key,
+      label: entry.label,
+      image: entry.file ? `${origin}/${entry.file}` : null
+    })),
     examples: {
       hsreplayStrategySTier: `${origin}/api/tier-lists?list=strategies&source=hsreplay&tier=S`,
       firestoneStrategyAllTiers: `${origin}/api/tier-lists?list=strategies&source=firestone`,
+      minionSTierWithBackground: `${origin}/api/tier-lists?list=minions&tier=S&background=wallpaper1`,
+      heroSTierExportPng: `${origin}/tier-list.html?export=tier&tier=S&background=wallpaper2&format=png`,
       trinketATier: `${origin}/api/tier-lists?list=trinkets&tier=A`,
       allDefaultTierLists: `${origin}/api/tier-lists?list=all`
     }
   };
 }
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   const limit = rateLimit(req, "tier-lists", 60, 60_000);
   if (!limit.allowed) {
     res.statusCode = 429;
@@ -309,6 +372,8 @@ module.exports = async function handler(req, res) {
     const list = parseList(url.searchParams.get("list"));
     const tier = parseTier(url.searchParams.get("tier"));
     const source = parseSource(url.searchParams.get("source"), "firestone");
+    const background = parseBackground(url.searchParams.get("background"));
+    const columns = parseColumns(url.searchParams.get("columns"));
 
     if (!list) {
       sendJson(res, 200, catalog(req), {
@@ -322,7 +387,9 @@ module.exports = async function handler(req, res) {
       const entries = await Promise.all(Object.keys(LISTS).map(async (listKey) => {
         const payload = await buildList(listKey, {
           source: listKey === "strategies" ? source : undefined,
-          tier
+          tier,
+          background,
+          columns
         }, req);
         return [listKey, payload];
       }));
@@ -338,7 +405,7 @@ module.exports = async function handler(req, res) {
       return;
     }
 
-    const payload = await buildList(list, { source, tier }, req);
+    const payload = await buildList(list, { source, tier, background, columns }, req);
     sendJson(res, 200, payload, {
       ifNoneMatch: req.headers["if-none-match"],
       cacheControl: "public, s-maxage=10800, stale-while-revalidate=86400"
@@ -351,4 +418,12 @@ module.exports = async function handler(req, res) {
       cacheControl: "no-store"
     });
   }
-};
+}
+
+module.exports = handler;
+module.exports.BACKGROUNDS = BACKGROUNDS;
+module.exports.TIER_ORDER = TIER_ORDER;
+module.exports.buildList = buildList;
+module.exports.parseBackground = parseBackground;
+module.exports.parseColumns = parseColumns;
+module.exports.parseTier = parseTier;
